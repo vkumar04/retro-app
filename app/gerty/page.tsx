@@ -22,8 +22,30 @@ export default function GertyPage() {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [apiKeyMissing, setApiKeyMissing] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
+  const [audioUnlocked, setAudioUnlocked] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
   const lastSpokenRef = useRef<number | null>(null)
+
+  // Browsers block <audio>.play() until the user has interacted with the page.
+  // First click primes the audio element by playing-and-pausing, which marks
+  // it as user-activated for all subsequent programmatic .play() calls.
+  const unlockAudio = useCallback(async () => {
+    if (audioUnlocked) return
+    const audio = audioRef.current
+    if (!audio) return
+    try {
+      audio.muted = true
+      await audio.play()
+      audio.pause()
+      audio.currentTime = 0
+      audio.muted = false
+      setAudioUnlocked(true)
+    } catch {
+      // some browsers reject without a src; we still mark unlocked because
+      // the click itself satisfied the user-activation requirement.
+      setAudioUnlocked(true)
+    }
+  }, [audioUnlocked])
 
   const speak = useCallback(
     async (text: string) => {
@@ -62,14 +84,30 @@ export default function GertyPage() {
     [voiceId, voiceSpeed, setMood],
   )
 
-  // Speak each new GERTY message exactly once.
+  // Speak each new GERTY message exactly once — but only after the user has
+  // interacted with the page, otherwise the browser silently rejects play().
   useEffect(() => {
+    const last = messages.at(-1)
+    if (!last || last.role !== "gerty") return
+    if (lastSpokenRef.current === last.timestamp) return
+    if (!audioUnlocked) return
+    lastSpokenRef.current = last.timestamp
+    void speak(last.text)
+  }, [messages, speak, audioUnlocked])
+
+  // When audio first unlocks, speak the most recent gerty message so the user
+  // hears something immediately rather than having to wait for the next one.
+  useEffect(() => {
+    if (!audioUnlocked) return
     const last = messages.at(-1)
     if (!last || last.role !== "gerty") return
     if (lastSpokenRef.current === last.timestamp) return
     lastSpokenRef.current = last.timestamp
     void speak(last.text)
-  }, [messages, speak])
+    // Intentionally only run when audioUnlocked flips; subsequent messages are
+    // handled by the effect above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioUnlocked])
 
   useEffect(() => {
     if (!idleAnimation || isSpeaking || mood === "thinking") return
@@ -83,6 +121,7 @@ export default function GertyPage() {
 
   const handleFaceClick = () => {
     if (systemStatus === "offline") return
+    void unlockAudio()
     const i = MOOD_CYCLE.indexOf(mood)
     setMood(MOOD_CYCLE[(i + 1) % MOOD_CYCLE.length])
   }
@@ -109,6 +148,18 @@ export default function GertyPage() {
       className="min-h-screen font-mono relative overflow-hidden"
       style={{ filter: `brightness(${brightness}%)`, backgroundColor: GERTY_BLUE, color: GERTY_YELLOW }}
     >
+      {!audioUnlocked && (
+        <button
+          type="button"
+          onClick={() => void unlockAudio()}
+          className="fixed inset-0 z-[60] flex flex-col items-center justify-center font-mono"
+          style={{ backgroundColor: "rgba(0,0,0,0.65)", color: GERTY_YELLOW }}
+        >
+          <div className="text-2xl tracking-[0.5em] mb-2">TAP TO ENABLE</div>
+          <div className="text-xs tracking-[0.3em] opacity-70">GERTY VOICE</div>
+        </button>
+      )}
+
       <main className="min-h-screen flex items-center justify-center">
         <div
           className="relative cursor-pointer w-screen h-screen flex items-center justify-center"
