@@ -5,8 +5,22 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { GertyFace } from "@/app/_components/gerty/gerty-face"
 import { useGertyActions, useGertyStore, type Mood } from "@/lib/gerty-store"
 
-const MOOD_CYCLE: Mood[] = ["happy", "neutral", "sad", "confused", "thinking"]
-const IDLE_MOODS: Mood[] = ["neutral", "happy"]
+// Map a spoken line to the mood that best fits its tone. Order matters —
+// the first matching pattern wins, so check the strongest signals first.
+const MOOD_PATTERNS: Array<{ mood: Mood; test: RegExp }> = [
+  { mood: "angry", test: /\b(no|stop|cease|warning|alert|danger|critical|forbid|deny|refuse)\b|!{2,}/i },
+  { mood: "sad", test: /\b(sorry|apologi[sz]e|unfortunately|regret|sad|cannot help|can't help|grief|loss|miss you)\b/i },
+  { mood: "confused", test: /\?\s*$|\b(unsure|unknown|cannot determine|don't understand|do not understand|unclear|maybe|perhaps)\b/i },
+  { mood: "thinking", test: /\b(thinking|let me|one moment|processing|calculating|analy[sz]ing|checking|hold on|standby)\b|\.{3,}/i },
+  { mood: "happy", test: /\b(hello|hi|great|wonderful|glad|happy|welcome|good (?:morning|afternoon|evening|day)|enjoy|pleas(?:e|ant)|fine|ok|okay)\b|!\s*$/i },
+]
+
+function moodForText(text: string): Mood {
+  for (const { mood, test } of MOOD_PATTERNS) {
+    if (test.test(text)) return mood
+  }
+  return "neutral"
+}
 
 export default function GertyPage() {
   const mood = useGertyStore((s) => s.mood)
@@ -16,7 +30,6 @@ export default function GertyPage() {
   const systemStatus = useGertyStore((s) => s.systemStatus)
   const messages = useGertyStore((s) => s.messages)
   const showScanlines = useGertyStore((s) => s.showScanlines)
-  const idleAnimation = useGertyStore((s) => s.idleAnimation)
   const { setMood } = useGertyActions()
 
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -71,7 +84,7 @@ export default function GertyPage() {
         }
       }
       setIsSpeaking(true)
-      setMood("happy")
+      setMood(moodForText(text))
       try {
         const res = await fetch("/api/speak", {
           method: "POST",
@@ -143,21 +156,9 @@ export default function GertyPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioUnlocked])
 
-  useEffect(() => {
-    if (!idleAnimation || isSpeaking || mood === "thinking") return
-    const id = setInterval(() => {
-      if (Math.random() > 0.9) {
-        setMood(IDLE_MOODS[Math.floor(Math.random() * IDLE_MOODS.length)])
-      }
-    }, 5000)
-    return () => clearInterval(id)
-  }, [idleAnimation, isSpeaking, mood, setMood])
-
   const handleFaceClick = () => {
     if (systemStatus === "offline") return
     void unlockAudio()
-    const i = MOOD_CYCLE.indexOf(mood)
-    setMood(MOOD_CYCLE[(i + 1) % MOOD_CYCLE.length])
   }
 
   if (systemStatus === "offline") {
