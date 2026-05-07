@@ -131,16 +131,21 @@ export default function GertyPage() {
     [voiceId, voiceSpeed, setMood],
   )
 
-  // Speak each new GERTY message exactly once — but only after the user has
-  // interacted with the page, otherwise the browser silently rejects play().
+  // React to every new message with a mood change (any role), and speak it
+  // aloud only when the role is "gerty" and audio is unlocked.
   useEffect(() => {
     const last = messages.at(-1)
-    if (!last || last.role !== "gerty") return
+    if (!last) return
     if (lastSpokenRef.current === last.timestamp) return
-    if (!audioUnlocked) return
-    lastSpokenRef.current = last.timestamp
-    void speak(last.text)
-  }, [messages, speak, audioUnlocked])
+    setMood(moodForText(last.text))
+    if (last.role === "gerty" && audioUnlocked) {
+      lastSpokenRef.current = last.timestamp
+      void speak(last.text)
+    } else if (last.role !== "gerty") {
+      // Mark non-spoken messages as handled so they're not re-processed.
+      lastSpokenRef.current = last.timestamp
+    }
+  }, [messages, speak, audioUnlocked, setMood])
 
   // When audio first unlocks, speak the most recent gerty message so the user
   // hears something immediately rather than having to wait for the next one.
