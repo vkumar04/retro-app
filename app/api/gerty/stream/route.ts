@@ -1,16 +1,21 @@
-import { getServerState, subscribe } from "@/lib/server/gerty-realtime"
+import { getServerState, getVersion } from "@/lib/server/gerty-realtime"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
+export const maxDuration = 300
+
+const POLL_MS = 1000
+const KEEPALIVE_MS = 25_000
 
 export async function GET(req: Request) {
   const encoder = new TextEncoder()
-  let unsubscribe = () => {}
-  let keepAlive: ReturnType<typeof setInterval> | null = null
+  let lastVersion = -1
+  let pollTimer: ReturnType<typeof setInterval> | null = null
+  let keepAliveTimer: ReturnType<typeof setInterval> | null = null
   let closed = false
 
   const stream = new ReadableStream({
-    start(controller) {
+    async start(controller) {
       const safeEnqueue = (chunk: Uint8Array) => {
         if (closed) return
         try {
@@ -22,17 +27,38 @@ export async function GET(req: Request) {
       const send = (data: unknown) => {
         safeEnqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
       }
-      send(getServerState())
-      unsubscribe = subscribe(send)
-      keepAlive = setInterval(() => {
+
+      try {
+        const initial = await getServerState()
+        lastVersion = await getVersion()
+        send(initial)
+      } catch {
+        // ignore initial fetch failures; poller will retry
+      }
+
+      pollTimer = setInterval(async () => {
+        if (closed) return
+        try {
+          const v = await getVersion()
+          if (v !== lastVersion) {
+            lastVersion = v
+            const next = await getServerState()
+            send(next)
+          }
+        } catch {
+          // transient redis errors — try again next tick
+        }
+      }, POLL_MS)
+
+      keepAliveTimer = setInterval(() => {
         safeEnqueue(encoder.encode(": ka\n\n"))
-      }, 25_000)
+      }, KEEPALIVE_MS)
 
       const cleanup = () => {
         if (closed) return
         closed = true
-        unsubscribe()
-        if (keepAlive) clearInterval(keepAlive)
+        if (pollTimer) clearInterval(pollTimer)
+        if (keepAliveTimer) clearInterval(keepAliveTimer)
         try {
           controller.close()
         } catch {
@@ -43,8 +69,8 @@ export async function GET(req: Request) {
     },
     cancel() {
       closed = true
-      unsubscribe()
-      if (keepAlive) clearInterval(keepAlive)
+      if (pollTimer) clearInterval(pollTimer)
+      if (keepAliveTimer) clearInterval(keepAliveTimer)
     },
   })
 

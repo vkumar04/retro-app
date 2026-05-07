@@ -6,12 +6,14 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export async function GET() {
-  return Response.json(getServerState())
+  const state = await getServerState()
+  return Response.json(state)
 }
 
 export async function POST(req: NextRequest) {
   const action = (await req.json()) as GertyAction
-  const next = applyAction(getServerState(), action)
-  setServerState(next)
+  const current = await getServerState()
+  const next = applyAction(current, action)
+  await setServerState(next)
   return Response.json(next)
 }
