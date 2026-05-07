@@ -60,6 +60,16 @@ export default function GertyPage() {
     async (text: string) => {
       const ctx = audioCtxRef.current
       if (!ctx) return
+      // iOS Safari may park the context in "suspended" or "interrupted" between
+      // plays (tab background, screen lock, idle). Resume before each speak.
+      if (ctx.state !== "running") {
+        try {
+          await ctx.resume()
+        } catch {
+          // resume can only succeed inside a gesture on first run; if we're
+          // here without one, playback will just fail and we'll retry next msg.
+        }
+      }
       setIsSpeaking(true)
       setMood("happy")
       try {
