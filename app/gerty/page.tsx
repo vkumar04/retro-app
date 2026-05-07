@@ -23,32 +23,43 @@ export default function GertyPage() {
   const [apiKeyMissing, setApiKeyMissing] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [audioUnlocked, setAudioUnlocked] = useState(false)
-  const audioRef = useRef<HTMLAudioElement>(null)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null)
   const lastSpokenRef = useRef<number | null>(null)
 
-  // Browsers block <audio>.play() until the user has interacted with the page.
-  // First click primes the audio element by playing-and-pausing, which marks
-  // it as user-activated for all subsequent programmatic .play() calls.
+  // iOS Safari requires an AudioContext.resume() inside a user gesture before
+  // any audio can play. Web Audio is more reliable than <audio>.play() on
+  // mobile Safari, and once the context is running we can stream TTS through
+  // a BufferSource without further gesture requirements.
   const unlockAudio = useCallback(async () => {
     if (audioUnlocked) return
-    const audio = audioRef.current
-    if (!audio) return
     try {
-      audio.muted = true
-      await audio.play()
-      audio.pause()
-      audio.currentTime = 0
-      audio.muted = false
+      if (!audioCtxRef.current) {
+        const Ctx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+        audioCtxRef.current = new Ctx()
+      }
+      const ctx = audioCtxRef.current
+      if (ctx.state === "suspended") await ctx.resume()
+      // Play a 1-sample silent buffer to confirm the context is hot.
+      const buffer = ctx.createBuffer(1, 1, 22050)
+      const src = ctx.createBufferSource()
+      src.buffer = buffer
+      src.connect(ctx.destination)
+      src.start(0)
       setAudioUnlocked(true)
-    } catch {
-      // some browsers reject without a src; we still mark unlocked because
-      // the click itself satisfied the user-activation requirement.
+    } catch (err) {
+      console.error("[gerty] audio unlock failed", err)
+      // mark unlocked anyway so the overlay clears; user can retry
       setAudioUnlocked(true)
     }
   }, [audioUnlocked])
 
   const speak = useCallback(
     async (text: string) => {
+      const ctx = audioCtxRef.current
+      if (!ctx) return
       setIsSpeaking(true)
       setMood("happy")
       try {
@@ -64,16 +75,29 @@ export default function GertyPage() {
           }
           throw new Error(err.error || "Speech synthesis failed")
         }
-        const audioUrl = URL.createObjectURL(await res.blob())
-        const audio = audioRef.current
-        if (!audio) return
-        audio.src = audioUrl
-        audio.onended = () => {
+        const arrayBuffer = await res.arrayBuffer()
+        // Some browsers (Safari) detach the buffer during decode — copy first.
+        const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0))
+
+        // Stop anything currently playing so messages don't pile up.
+        if (currentSourceRef.current) {
+          try {
+            currentSourceRef.current.stop()
+          } catch {
+            // already stopped
+          }
+        }
+
+        const source = ctx.createBufferSource()
+        source.buffer = audioBuffer
+        source.connect(ctx.destination)
+        source.onended = () => {
+          if (currentSourceRef.current === source) currentSourceRef.current = null
           setIsSpeaking(false)
           setMood("neutral")
-          URL.revokeObjectURL(audioUrl)
         }
-        await audio.play()
+        currentSourceRef.current = source
+        source.start(0)
       } catch (error) {
         console.error("Speech error:", error)
         setIsSpeaking(false)
@@ -187,7 +211,6 @@ export default function GertyPage() {
         </div>
       </main>
 
-      <audio ref={audioRef} className="hidden" />
     </div>
   )
 }
