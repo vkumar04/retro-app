@@ -101,6 +101,7 @@ export const gertyStore = {
   setIdleAnimation: (value: boolean) => dispatch({ type: "setIdleAnimation", value }),
   reset: () => dispatch({ type: "reset" }),
   sendGertyMessage: (text: string) => dispatch({ type: "sendGertyMessage", text }),
+  setSkeletonWalking: (value: boolean) => dispatch({ type: "setSkeletonWalking", value }),
 }
 
 export function useGertyStore<T>(selector: (state: GertyState) => T): T {

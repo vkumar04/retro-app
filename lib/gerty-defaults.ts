@@ -26,6 +26,7 @@ export interface GertyState {
   primaryColor: string
   showScanlines: boolean
   idleAnimation: boolean
+  skeletonWalking: boolean
 }
 
 export const defaultGertyState: GertyState = {
@@ -52,4 +53,5 @@ export const defaultGertyState: GertyState = {
   primaryColor: "green",
   showScanlines: true,
   idleAnimation: true,
+  skeletonWalking: false,
 }

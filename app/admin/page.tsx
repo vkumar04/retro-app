@@ -12,7 +12,9 @@ export default function AdminPage() {
   const mood = useGertyStore((s) => s.mood)
   const systemStatus = useGertyStore((s) => s.systemStatus)
   const voiceId = useGertyStore((s) => s.voiceId)
-  const { setMood, setSystemStatus, setVoiceId, sendGertyMessage } = useGertyActions()
+  const skeletonWalking = useGertyStore((s) => s.skeletonWalking)
+  const { setMood, setSystemStatus, setVoiceId, sendGertyMessage, setSkeletonWalking } =
+    useGertyActions()
 
   const [message, setMessage] = useState("")
   const [time, setTime] = useState("")
@@ -104,6 +106,23 @@ export default function AdminPage() {
                 </option>
               ))}
             </select>
+          </Panel>
+
+          <Panel title="SKELETON" right={skeletonWalking ? "WALKING" : "IDLE"}>
+            <div className="grid grid-cols-2 gap-2">
+              <TerminalButton active={skeletonWalking} onClick={() => setSkeletonWalking(true)}>
+                WALK
+              </TerminalButton>
+              <TerminalButton active={!skeletonWalking} onClick={() => setSkeletonWalking(false)}>
+                STOP
+              </TerminalButton>
+            </div>
+            <Link
+              href="/skeleton"
+              className="mt-3 block text-center text-xs text-terminal-green hover:underline"
+            >
+              VIEW SKELETON {">"}
+            </Link>
           </Panel>
 
           <Panel title="SPEAK">

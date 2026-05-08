@@ -20,6 +20,7 @@ export type GertyAction =
   | { type: "setShowScanlines"; value: boolean }
   | { type: "setIdleAnimation"; value: boolean }
   | { type: "sendGertyMessage"; text: string }
+  | { type: "setSkeletonWalking"; value: boolean }
   | { type: "reset" }
 
 export function applyAction(state: GertyState, action: GertyAction): GertyState {
@@ -64,6 +65,8 @@ export function applyAction(state: GertyState, action: GertyAction): GertyState 
         ...state,
         messages: [...state.messages, { role: "gerty", text: action.text, timestamp: Date.now() }],
       }
+    case "setSkeletonWalking":
+      return { ...state, skeletonWalking: action.value }
     case "reset":
       return { ...defaultGertyState }
   }
