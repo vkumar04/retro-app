@@ -3,25 +3,44 @@
 import { useGLTF } from "@react-three/drei"
 import { useFrame } from "@react-three/fiber"
 import { useMemo, useRef } from "react"
-import { Box3, Vector3, type Group } from "three"
+import { Box3, Mesh, Vector3, type Group } from "three"
 
 const MODEL_PATH = "/models/skeleton.glb"
 
 useGLTF.preload(MODEL_PATH)
 
-// The supplied anatomical skeleton has no rig or animation clips, so we
-// display it static and animate the whole figure with a subtle sway when
-// "walking" is on. Once we have a rigged model we'll swap this for true
-// per-bone animation.
+// The supplied GLB packages the assembled skeleton next to a separated
+// "anatomy showcase" of named parts (Skull, RibCage, Spine, Pelvis, Jaw,
+// SK_Pelvis, Teeth.*). We hide the showcase so only the assembled figure
+// (the Plane.XXX nodes) is visible.
+const HIDE_NODES = /^(RibCage|SK_Pelvis|Skull|Spine|Pelvis|Jaw|Teeth)(\b|\.|$)/
+
 export function SkeletonGLTF({ walking }: { walking: boolean }) {
   const root = useRef<Group>(null)
   const { scene } = useGLTF(MODEL_PATH) as unknown as { scene: Group }
 
-  // The source GLB is exported from FBX in cm and not centered. Compute its
-  // world-space bounding box once and derive a scale + offset so the model
-  // is ~1.8 units tall and stands on y = 0.
+  // Hide the showcase parts and compute a tight bounding box around what
+  // remains so we can scale-and-center the assembled skeleton on the ground.
   const { scale, offset } = useMemo(() => {
-    const box = new Box3().setFromObject(scene)
+    scene.traverse((obj) => {
+      if (HIDE_NODES.test(obj.name)) obj.visible = false
+    })
+    scene.updateMatrixWorld(true)
+
+    const box = new Box3()
+    const tmp = new Box3()
+    scene.traverseVisible((obj) => {
+      const mesh = obj as Mesh
+      if (mesh.isMesh && mesh.geometry) {
+        mesh.geometry.computeBoundingBox()
+        const localBox = mesh.geometry.boundingBox
+        if (localBox) {
+          tmp.copy(localBox).applyMatrix4(mesh.matrixWorld)
+          box.union(tmp)
+        }
+      }
+    })
+
     const size = box.getSize(new Vector3())
     const center = box.getCenter(new Vector3())
     const targetHeight = 1.8
@@ -32,7 +51,6 @@ export function SkeletonGLTF({ walking }: { walking: boolean }) {
     }
   }, [scene])
 
-  // Smoothly ramp the sway amplitude on toggle so it doesn't pop.
   const amp = useRef(0)
 
   useFrame((state, dt) => {
