@@ -67,7 +67,7 @@ export default function SkeletonPage() {
       </header>
 
       <footer className="fixed bottom-0 left-0 right-0 px-4 py-3 z-10 text-center font-mono text-[10px] text-muted-foreground">
-        anatomical skeleton (static mesh) // walk = sway placeholder until rig
+        kaykit skeletons (CC0) // walking clip auto-selected
       </footer>
     </div>
   )
