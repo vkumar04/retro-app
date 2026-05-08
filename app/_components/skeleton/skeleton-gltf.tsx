@@ -1,53 +1,60 @@
 "use client"
 
-import { useAnimations, useGLTF } from "@react-three/drei"
-import { useEffect, useRef } from "react"
-import type { Group } from "three"
-import { LoopRepeat } from "three"
+import { useGLTF } from "@react-three/drei"
+import { useFrame } from "@react-three/fiber"
+import { useMemo, useRef } from "react"
+import { Box3, Vector3, type Group } from "three"
 
 const MODEL_PATH = "/models/skeleton.glb"
 
 useGLTF.preload(MODEL_PATH)
 
-// KayKit Skeleton (CC0). Rigged with multiple animation clips — we pick the
-// best "walking" candidate by name and play it on demand. The model also has
-// idle/run/attack clips we can wire up later.
+// The supplied anatomical skeleton has no rig or animation clips, so we
+// display it static and animate the whole figure with a subtle sway when
+// "walking" is on. Once we have a rigged model we'll swap this for true
+// per-bone animation.
 export function SkeletonGLTF({ walking }: { walking: boolean }) {
-  const group = useRef<Group>(null)
-  const { scene, animations } = useGLTF(MODEL_PATH) as unknown as {
-    scene: Group
-    animations: import("three").AnimationClip[]
-  }
-  const { actions, names } = useAnimations(animations, group)
+  const root = useRef<Group>(null)
+  const { scene } = useGLTF(MODEL_PATH) as unknown as { scene: Group }
 
-  // Pick a walk clip; fall back to run, then idle, then any clip.
-  const walkClip =
-    names.find((n) => /walk/i.test(n)) ??
-    names.find((n) => /run/i.test(n)) ??
-    null
-  const idleClip =
-    names.find((n) => /idle/i.test(n)) ??
-    names.find((n) => /^stand/i.test(n)) ??
-    (names.length ? names[0] : null)
-
-  useEffect(() => {
-    if (!names.length) return
-    const target = walking ? walkClip : idleClip
-    if (!target) return
-    const targetAction = actions[target]
-    if (!targetAction) return
-
-    // Crossfade from any currently-playing clip into the target.
-    targetAction.reset().setLoop(LoopRepeat, Infinity).fadeIn(0.25).play()
-
-    return () => {
-      targetAction.fadeOut(0.25)
+  // The source GLB is exported from FBX in cm and not centered. Compute its
+  // world-space bounding box once and derive a scale + offset so the model
+  // is ~1.8 units tall and stands on y = 0.
+  const { scale, offset } = useMemo(() => {
+    const box = new Box3().setFromObject(scene)
+    const size = box.getSize(new Vector3())
+    const center = box.getCenter(new Vector3())
+    const targetHeight = 1.8
+    const s = size.y > 0 ? targetHeight / size.y : 1
+    return {
+      scale: s,
+      offset: new Vector3(-center.x * s, -(center.y - size.y / 2) * s, -center.z * s),
     }
-  }, [walking, actions, names, walkClip, idleClip])
+  }, [scene])
+
+  // Smoothly ramp the sway amplitude on toggle so it doesn't pop.
+  const amp = useRef(0)
+
+  useFrame((state, dt) => {
+    const target = walking ? 1 : 0
+    amp.current += (target - amp.current) * Math.min(1, dt * 5)
+    if (!root.current) return
+    if (amp.current < 0.001) {
+      root.current.rotation.set(0, 0, 0)
+      root.current.position.y = 0
+      return
+    }
+    const t = state.clock.elapsedTime * 2.6
+    root.current.rotation.z = Math.sin(t) * 0.045 * amp.current
+    root.current.rotation.y = Math.sin(t * 0.5) * 0.06 * amp.current
+    root.current.position.y = Math.abs(Math.sin(t)) * 0.04 * amp.current
+  })
 
   return (
-    <group ref={group} dispose={null}>
-      <primitive object={scene} />
+    <group ref={root}>
+      <group scale={scale} position={offset}>
+        <primitive object={scene} />
+      </group>
     </group>
   )
 }
