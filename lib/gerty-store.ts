@@ -8,9 +8,10 @@ import {
   type GertyState,
   type Mood,
   type SystemStatus,
+  type Todo,
 } from "./gerty-defaults"
 
-export type { GertyMessage, GertyState, Mood, SystemStatus }
+export type { GertyMessage, GertyState, Mood, SystemStatus, Todo }
 
 let state: GertyState = defaultGertyState
 let connected = false
@@ -102,6 +103,10 @@ export const gertyStore = {
   reset: () => dispatch({ type: "reset" }),
   sendGertyMessage: (text: string) => dispatch({ type: "sendGertyMessage", text }),
   setSkeletonWalking: (value: boolean) => dispatch({ type: "setSkeletonWalking", value }),
+  addTodo: (text: string) => dispatch({ type: "addTodo", text }),
+  toggleTodo: (id: string) => dispatch({ type: "toggleTodo", id }),
+  removeTodo: (id: string) => dispatch({ type: "removeTodo", id }),
+  clearCompletedTodos: () => dispatch({ type: "clearCompletedTodos" }),
 }
 
 export function useGertyStore<T>(selector: (state: GertyState) => T): T {

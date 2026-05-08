@@ -15,6 +15,13 @@ export interface GertyMessage {
   timestamp: number
 }
 
+export interface Todo {
+  id: string
+  text: string
+  done: boolean
+  createdAt: number
+}
+
 export interface GertyState {
   mood: Mood
   brightness: number
@@ -27,6 +34,7 @@ export interface GertyState {
   showScanlines: boolean
   idleAnimation: boolean
   skeletonWalking: boolean
+  todos: Todo[]
 }
 
 export const defaultGertyState: GertyState = {
@@ -54,4 +62,5 @@ export const defaultGertyState: GertyState = {
   showScanlines: true,
   idleAnimation: true,
   skeletonWalking: false,
+  todos: [],
 }

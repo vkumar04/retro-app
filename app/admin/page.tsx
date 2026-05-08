@@ -13,10 +13,21 @@ export default function AdminPage() {
   const systemStatus = useGertyStore((s) => s.systemStatus)
   const voiceId = useGertyStore((s) => s.voiceId)
   const skeletonWalking = useGertyStore((s) => s.skeletonWalking)
-  const { setMood, setSystemStatus, setVoiceId, sendGertyMessage, setSkeletonWalking } =
-    useGertyActions()
+  const todos = useGertyStore((s) => s.todos)
+  const {
+    setMood,
+    setSystemStatus,
+    setVoiceId,
+    sendGertyMessage,
+    setSkeletonWalking,
+    addTodo,
+    toggleTodo,
+    removeTodo,
+    clearCompletedTodos,
+  } = useGertyActions()
 
   const [message, setMessage] = useState("")
+  const [todoInput, setTodoInput] = useState("")
   const [time, setTime] = useState("")
 
   useEffect(() => {
@@ -32,6 +43,15 @@ export default function AdminPage() {
     sendGertyMessage(text)
     setMessage("")
   }
+
+  const addNewTodo = () => {
+    const text = todoInput.trim()
+    if (!text) return
+    addTodo(text)
+    setTodoInput("")
+  }
+
+  const completedCount = todos.filter((t) => t.done).length
 
   const statusTone =
     systemStatus === "online"
@@ -144,6 +164,96 @@ export default function AdminPage() {
               </button>
             </div>
           </Panel>
+
+          <div className="md:col-span-2">
+            <Panel
+              title="TASKS"
+              right={`${completedCount} / ${todos.length} DONE`}
+            >
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  value={todoInput}
+                  onChange={(e) => setTodoInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addNewTodo()}
+                  placeholder="New task..."
+                  className="flex-1 bg-background border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-terminal-green"
+                />
+                <button
+                  onClick={addNewTodo}
+                  disabled={!todoInput.trim()}
+                  className="px-4 py-2 border border-terminal-green bg-terminal-green/10 text-terminal-green hover:bg-terminal-green/20 disabled:opacity-40 disabled:cursor-not-allowed text-xs tracking-wider"
+                >
+                  ADD
+                </button>
+                <button
+                  onClick={clearCompletedTodos}
+                  disabled={completedCount === 0}
+                  className="px-4 py-2 border border-border text-muted-foreground hover:border-destructive/60 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed text-xs tracking-wider"
+                >
+                  CLEAR DONE
+                </button>
+              </div>
+
+              {todos.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">
+                  No tasks queued. Add one above.
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-1.5 max-h-72 overflow-y-auto">
+                  {todos.map((t) => (
+                    <li
+                      key={t.id}
+                      className="flex items-center gap-3 border border-border px-3 py-2"
+                    >
+                      <button
+                        onClick={() => toggleTodo(t.id)}
+                        aria-label={t.done ? "Mark incomplete" : "Mark complete"}
+                        className={`size-4 shrink-0 border-2 flex items-center justify-center ${
+                          t.done
+                            ? "border-terminal-amber bg-terminal-amber/10"
+                            : "border-terminal-green hover:bg-terminal-green/10"
+                        }`}
+                      >
+                        {t.done && (
+                          <svg viewBox="0 0 24 24" className="size-3 text-terminal-amber" fill="none">
+                            <path
+                              d="M4 12 L10 18 L20 6"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                      <span
+                        className={`flex-1 text-sm ${
+                          t.done ? "text-muted-foreground line-through" : "text-foreground"
+                        }`}
+                      >
+                        {t.text}
+                      </span>
+                      <button
+                        onClick={() => removeTodo(t.id)}
+                        aria-label="Delete task"
+                        className="text-xs text-muted-foreground hover:text-destructive tracking-wider"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <Link
+                href="/todo"
+                className="mt-3 block text-center text-xs text-terminal-green hover:underline"
+              >
+                VIEW TASK QUEUE {">"}
+              </Link>
+            </Panel>
+          </div>
         </div>
 
         <footer className="mt-6 border-t border-border pt-4 text-center text-xs text-muted-foreground">

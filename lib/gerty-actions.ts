@@ -21,6 +21,10 @@ export type GertyAction =
   | { type: "setIdleAnimation"; value: boolean }
   | { type: "sendGertyMessage"; text: string }
   | { type: "setSkeletonWalking"; value: boolean }
+  | { type: "addTodo"; text: string }
+  | { type: "toggleTodo"; id: string }
+  | { type: "removeTodo"; id: string }
+  | { type: "clearCompletedTodos" }
   | { type: "reset" }
 
 export function applyAction(state: GertyState, action: GertyAction): GertyState {
@@ -67,6 +71,32 @@ export function applyAction(state: GertyState, action: GertyAction): GertyState 
       }
     case "setSkeletonWalking":
       return { ...state, skeletonWalking: action.value }
+    case "addTodo": {
+      const text = action.text.trim()
+      if (!text) return state
+      const id =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      return {
+        ...state,
+        todos: [...state.todos, { id, text, done: false, createdAt: Date.now() }],
+      }
+    }
+    case "toggleTodo":
+      return {
+        ...state,
+        todos: state.todos.map((t) =>
+          t.id === action.id ? { ...t, done: !t.done } : t,
+        ),
+      }
+    case "removeTodo":
+      return {
+        ...state,
+        todos: state.todos.filter((t) => t.id !== action.id),
+      }
+    case "clearCompletedTodos":
+      return { ...state, todos: state.todos.filter((t) => !t.done) }
     case "reset":
       return { ...defaultGertyState }
   }
