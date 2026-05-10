@@ -18,7 +18,7 @@ export function BodyComposition() {
       </div>
 
       <div className="grid grid-cols-[1fr_1fr] gap-[1.6vh] mt-[1.2vh] h-[calc(100%-5vh)]">
-        <div className="relative flex items-center justify-center">
+        <div className="relative flex items-center justify-center bg-black">
           <DexaSilhouette />
         </div>
 
