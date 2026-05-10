@@ -94,7 +94,7 @@ function BracketCorners() {
 function DexaSilhouette() {
   return (
     <Image
-      src="/dexa-scan.png"
+      src="/dexa-scan-v2.png"
       alt="DEXA body composition scan"
       width={108}
       height={346}
