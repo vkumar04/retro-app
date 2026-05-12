@@ -19,14 +19,17 @@ const SNAPSHOT_TTL_SEC = 30
 const REPLY_TTL_SEC = 60
 const POLL_INTERVAL_MS = 250
 const SNAPSHOT_INTERVAL_MS = 5000
+const CLIENT_ID = "retro-trs80-bridge"
 
 type RawDevice = {
-  node_id: string
+  node_id?: string
+  device_name?: string
   name?: string
-  switch?: "on" | "off"
-  on?: boolean
-  intensity?: number
+  id?: string
+  [k: string]: unknown
 }
+
+type SleepResp = { sleep?: boolean } | undefined
 
 type Snapshot = {
   ts: number
@@ -46,29 +49,104 @@ const redis = Redis.fromEnv()
 const discovered = await discoverLocalWebSocket().catch(() => null)
 const wsUrl = discovered?.url ?? "ws://localhost:60124"
 console.log(`[bridge] amaran websocket: ${wsUrl}`)
-const controller = new LightController(wsUrl)
 
-function call<T>(fn: (cb: (ok: boolean, msg: string, data: T) => void) => void) {
+let initialized = false
+let controllerInitCallback: () => void = () => {}
+const initPromise = new Promise<void>((resolve) => {
+  // Failsafe: don't block forever if amaran has 0 devices (onInitialized may
+  // not fire when there are no node configs to gather).
+  const timer = setTimeout(() => {
+    if (!initialized) {
+      console.warn("[bridge] init timeout — proceeding anyway")
+      initialized = true
+      resolve()
+    }
+  }, 8_000)
+  controllerInitCallback = () => {
+    if (initialized) return
+    initialized = true
+    clearTimeout(timer)
+    console.log("[bridge] controller initialized")
+    resolve()
+  }
+})
+
+const controller = new LightController(wsUrl, CLIENT_ID, () =>
+  controllerInitCallback(),
+)
+
+function call<T>(
+  fn: (cb: (ok: boolean, msg: string, data: T) => void) => void,
+  timeoutMs = 5_000,
+): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    fn((ok, msg, data) => (ok ? resolve(data) : reject(new Error(msg))))
+    const timer = setTimeout(() => reject(new Error("amaran call timeout")), timeoutMs)
+    fn((ok, msg, data) => {
+      clearTimeout(timer)
+      ok ? resolve(data) : reject(new Error(msg))
+    })
   })
 }
 
-const isOn = (d: RawDevice): boolean => {
-  if (d.switch) return d.switch === "on"
-  if (typeof d.on === "boolean") return d.on
-  return (d.intensity ?? 0) > 0
+async function listDevices(): Promise<RawDevice[]> {
+  const data = await call<RawDevice[] | { data?: RawDevice[] }>((cb) =>
+    controller.getDeviceList(cb),
+  )
+  // The handler unwraps parsedData.data, but some responses double-wrap.
+  if (Array.isArray(data)) return data
+  if (data && Array.isArray((data as { data?: RawDevice[] }).data))
+    return (data as { data: RawDevice[] }).data
+  return []
 }
 
+async function getSleep(nodeId: string): Promise<boolean | undefined> {
+  try {
+    const data = await call<SleepResp>((cb) =>
+      controller.getLightSleepStatus(nodeId, cb),
+    )
+    if (data && typeof data === "object" && "sleep" in data) {
+      return Boolean(data.sleep)
+    }
+    return undefined
+  } catch (err) {
+    console.warn(
+      `[bridge] sleep status failed for ${nodeId}:`,
+      err instanceof Error ? err.message : err,
+    )
+    return undefined
+  }
+}
+
+let loggedFirstDeviceList = false
 async function buildSnapshot(): Promise<Snapshot> {
-  const devices = await call<RawDevice[]>((cb) => controller.getDeviceList(cb))
+  const devices = await listDevices()
+  if (!loggedFirstDeviceList) {
+    loggedFirstDeviceList = true
+    console.log("[bridge] first device list:", JSON.stringify(devices, null, 2))
+  }
+
+  const states = await Promise.all(
+    devices.map(async (d) => {
+      const id = d.node_id ?? d.id
+      if (!id) return undefined
+      return await getSleep(id)
+    }),
+  )
+
   return {
     ts: Date.now(),
-    devices: devices.map((d) => ({
-      deviceId: d.node_id,
-      label: d.name ?? d.node_id,
-      switchState: isOn(d) ? "on" : "off",
-    })),
+    devices: devices
+      .map((d, i) => {
+        const id = d.node_id ?? d.id
+        if (!id) return null
+        const sleep = states[i]
+        return {
+          deviceId: id,
+          label: d.device_name ?? d.name ?? id,
+          switchState: (sleep === false ? "on" : "off") as "on" | "off",
+        }
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null),
   }
 }
 
@@ -76,6 +154,7 @@ async function pushSnapshot(): Promise<Snapshot | null> {
   try {
     const snap = await buildSnapshot()
     await redis.set(SNAPSHOT_KEY, snap, { ex: SNAPSHOT_TTL_SEC })
+    console.log(`[bridge] snapshot: ${snap.devices.length} device(s)`)
     return snap
   } catch (err) {
     console.error("[bridge] snapshot error:", err)
@@ -90,21 +169,21 @@ async function handleCommand(cmd: Command): Promise<unknown> {
   }
 
   if (cmd.type === "toggle") {
-    const devices = await call<RawDevice[]>((cb) =>
-      controller.getDeviceList(cb),
-    )
-    const d = devices.find((x) => x.node_id === cmd.deviceId)
-    if (!d) return { error: "device not found" }
-    const next = !isOn(d)
-    await call<unknown>((cb) =>
-      next ? controller.turnOn(d.node_id, cb) : controller.turnOff(d.node_id, cb),
-    )
+    await call<unknown>((cb) => controller.toggleLight(cmd.deviceId, cb))
+    // Let the desktop app's mesh round-trip the state change before re-reading.
+    await new Promise((r) => setTimeout(r, 300))
+    const sleep = await getSleep(cmd.deviceId)
+    const switchState: "on" | "off" = sleep === false ? "on" : "off"
+    // Refresh full snapshot so the UI sees the new state on next /devices poll.
     await pushSnapshot()
-    return { deviceId: d.node_id, switchState: next ? "on" : "off" }
+    return { deviceId: cmd.deviceId, switchState }
   }
 
   return { error: "unknown command" }
 }
+
+// Wait for controller init before opening the polling loop.
+await initPromise
 
 let lastSnapshot = 0
 async function tick() {
