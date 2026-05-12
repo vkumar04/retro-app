@@ -9,8 +9,10 @@ const STATE_KEY = "gerty:state"
 const VERSION_KEY = "gerty:version"
 
 export async function getServerState(): Promise<GertyState> {
-  const stored = await redis.get<GertyState>(STATE_KEY)
-  return stored ?? defaultGertyState
+  const stored = await redis.get<Partial<GertyState>>(STATE_KEY)
+  // Merge with defaults so older state objects missing newer fields
+  // (e.g., todos was added later) don't return undefined for them.
+  return { ...defaultGertyState, ...(stored ?? {}) }
 }
 
 export async function setServerState(next: GertyState): Promise<GertyState> {
