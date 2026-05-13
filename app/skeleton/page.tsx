@@ -1,14 +1,25 @@
 "use client"
 
-import { OrbitControls } from "@react-three/drei"
+import { Environment, OrbitControls } from "@react-three/drei"
 import { Canvas } from "@react-three/fiber"
 import Link from "next/link"
-import { Suspense } from "react"
+import { Suspense, useEffect } from "react"
 import { SkeletonGLTF } from "@/app/_components/skeleton/skeleton-gltf"
-import { useGertyStore } from "@/lib/gerty-store"
+import { useGertyActions, useGertyStore } from "@/lib/gerty-store"
 
 export default function SkeletonPage() {
+  // Source of truth: the global gerty store. Admin's WALK / STOP buttons
+  // update `skeletonWalking` and the change broadcasts here via SSE.
   const walking = useGertyStore((s) => s.skeletonWalking)
+  const { setSkeletonWalking } = useGertyActions()
+
+  // Auto-start walking when the page first opens — most visits want to see
+  // movement, not the bind pose. After this, the admin toggle takes over.
+  useEffect(() => {
+    if (!walking) setSkeletonWalking(true)
+    // run only on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -16,21 +27,26 @@ export default function SkeletonPage() {
         shadows
         // Camera framed for a tall (portrait) viewport — model sits on the
         // ground plane and stays fully visible without head clipping.
-        camera={{ position: [0, 1.6, 4.2], fov: 35 }}
+        camera={{ position: [0, 1.0, 3.0], fov: 50 }}
         className="!fixed inset-0"
       >
         <color attach="background" args={["#08120c"]} />
         <fog attach="fog" args={["#08120c", 5, 14]} />
 
-        <ambientLight intensity={0.4} />
+        {/* Environment provides an IBL envmap so PBR materials (metallic/rough)
+            actually render. Without it, Meshy/glTF models often appear black or
+            invisible because they rely on reflected ambient light. */}
+        <Environment preset="city" environmentIntensity={0.6} />
+
+        <ambientLight intensity={0.6} />
         <directionalLight
           position={[3, 6, 4]}
-          intensity={1.2}
+          intensity={1.4}
           castShadow
           shadow-mapSize-width={1024}
           shadow-mapSize-height={1024}
         />
-        <directionalLight position={[-4, 3, -2]} intensity={0.3} color="#7fffb2" />
+        <directionalLight position={[-4, 3, -2]} intensity={0.5} color="#7fffb2" />
 
         <Suspense fallback={null}>
           <SkeletonGLTF walking={walking} />
@@ -67,7 +83,7 @@ export default function SkeletonPage() {
       </header>
 
       <footer className="fixed bottom-0 left-0 right-0 px-4 py-3 z-10 text-center font-mono text-[10px] text-muted-foreground">
-        kaykit skeletons (CC0) // walking clip auto-selected
+        meshy ai skeleton // clips: Walking · Running · Sleep_Normally
       </footer>
     </div>
   )

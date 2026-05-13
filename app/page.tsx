@@ -21,7 +21,7 @@ export default function DashboardPage() {
           <span className="text-terminal-cyan">~/health</span>
           <span>$ </span>
           <span className="text-foreground">
-            display --dashboard --user=ALEX_CHEN --4k
+            display --dashboard --user=ADAM_RABY --4k
           </span>
           <span className="cursor-blink ml-1">█</span>
         </span>

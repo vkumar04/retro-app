@@ -4,7 +4,7 @@ import Image from "next/image"
 import { useEffect, useState } from "react"
 
 const PATIENT = {
-  name: "ALEX CHEN",
+  name: "ADAM RABY",
   id: "PATIENT_01",
   age: 34,
   heightCm: 170,
@@ -51,7 +51,7 @@ export function ProfileCard() {
           <div className="size-[20vh] p-[0.4vh] border-2 border-terminal-green box-glow">
             <div className="size-full bg-background overflow-hidden">
               <Image
-                src="/placeholder-user.jpg"
+                src="/adam.jpg"
                 alt={PATIENT.name}
                 width={400}
                 height={400}

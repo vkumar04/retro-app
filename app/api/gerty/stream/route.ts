@@ -4,7 +4,9 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 export const maxDuration = 300
 
-const POLL_MS = 1000
+// 3s poll keeps the UI responsive while keeping Redis request rate under the
+// daily quota even with a kiosk display open all day.
+const POLL_MS = 3000
 const KEEPALIVE_MS = 25_000
 
 export async function GET(req: Request) {

@@ -16,10 +16,16 @@ export type { GertyMessage, GertyState, Mood, SystemStatus, Todo }
 let state: GertyState = defaultGertyState
 let connected = false
 let eventSource: EventSource | null = null
+let lastError: string | null = null
 const listeners = new Set<() => void>()
+const errorListeners = new Set<() => void>()
 
 function notify() {
   listeners.forEach((l) => l())
+}
+
+function notifyError() {
+  errorListeners.forEach((l) => l())
 }
 
 function setLocalState(next: GertyState) {
@@ -27,20 +33,40 @@ function setLocalState(next: GertyState) {
   notify()
 }
 
+function setLastError(msg: string | null) {
+  if (lastError === msg) return
+  lastError = msg
+  notifyError()
+}
+
 async function dispatch(action: GertyAction) {
-  // Optimistic local apply via SSE round-trip is the source of truth, so we
-  // only fire the request and let the broadcast update everyone (including us).
   try {
     const res = await fetch("/api/gerty/state", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(action),
     })
-    if (!res.ok) return
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`
+      try {
+        const body = await res.text()
+        // Pull a short, informative slice of the error body.
+        const trimmed = body.trim().slice(0, 240)
+        if (trimmed) detail = `${detail} — ${trimmed}`
+      } catch {
+        // ignore body read errors
+      }
+      console.error("[gerty] dispatch failed:", detail)
+      setLastError(detail)
+      return
+    }
+    setLastError(null)
     const next = (await res.json()) as GertyState
     setLocalState(next)
   } catch (err) {
-    console.error("[gerty] dispatch failed", err)
+    const msg = err instanceof Error ? err.message : "network error"
+    console.error("[gerty] dispatch failed:", msg)
+    setLastError(msg)
   }
 }
 
@@ -119,4 +145,17 @@ export function useGertyStore<T>(selector: (state: GertyState) => T): T {
 
 export function useGertyActions() {
   return gertyStore
+}
+
+export function useGertyLastError(): string | null {
+  return useSyncExternalStore(
+    (cb) => {
+      errorListeners.add(cb)
+      return () => {
+        errorListeners.delete(cb)
+      }
+    },
+    () => lastError,
+    () => null,
+  )
 }

@@ -86,3 +86,4 @@ export async function toggleAmaranDevice(
   if (!result.deviceId || !result.switchState) throw new Error("bad reply")
   return { deviceId: result.deviceId, switchState: result.switchState }
 }
+

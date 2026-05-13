@@ -1,14 +1,16 @@
-// Redis-backed bridge worker. Connects outbound to Upstash and to the local
-// amaran desktop WebSocket. No public port, no tunnel.
+// Redis-backed bridge worker. Native Redis (ioredis) BLPOP — blocks server-side
+// for commands, so the worker uses ~0 requests while idle (vs ~345k/day from
+// REST polling). Snapshot pushes every SNAPSHOT_INTERVAL_MS are the only
+// scheduled writes.
 //
 //   cd amaran-bridge
 //   npm install
 //   npm start
 //
-// Requires KV_REST_API_URL + KV_REST_API_TOKEN (auto-provisioned by the
-// Vercel <-> Upstash Marketplace integration) in ../.env.local.
+// Requires KV_URL (or REDIS_URL) in ../.env.local — the Redis-protocol URL
+// auto-provisioned by the Vercel <-> Upstash Marketplace integration.
 //
-import { Redis } from "@upstash/redis"
+import IORedis from "ioredis"
 // @ts-expect-error - amaran-light-cli has no published types
 import { LightController, discoverLocalWebSocket } from "amaran-light-cli"
 
@@ -17,8 +19,8 @@ const REPLY_PREFIX = "amaran:reply:"
 const SNAPSHOT_KEY = "amaran:snapshot"
 const SNAPSHOT_TTL_SEC = 30
 const REPLY_TTL_SEC = 60
-const POLL_INTERVAL_MS = 250
-const SNAPSHOT_INTERVAL_MS = 5000
+const SNAPSHOT_INTERVAL_MS = 5_000
+const BLOCK_TIMEOUT_SEC = 25
 const CLIENT_ID = "retro-trs80-bridge"
 
 type RawDevice = {
@@ -44,7 +46,15 @@ type Command =
   | { type: "toggle"; deviceId: string; reqId: string }
   | { type: "refresh"; reqId: string }
 
-const redis = Redis.fromEnv()
+const redisUrl = process.env.KV_URL ?? process.env.REDIS_URL
+if (!redisUrl) {
+  console.error("KV_URL or REDIS_URL must be set in ../.env.local")
+  process.exit(1)
+}
+
+// One connection for BLPOP (blocking), one for writes.
+const redisBlocking = new IORedis(redisUrl, { maxRetriesPerRequest: null })
+const redis = new IORedis(redisUrl, { maxRetriesPerRequest: null })
 
 const discovered = await discoverLocalWebSocket().catch(() => null)
 const wsUrl = discovered?.url ?? "ws://localhost:60124"
@@ -53,8 +63,6 @@ console.log(`[bridge] amaran websocket: ${wsUrl}`)
 let initialized = false
 let controllerInitCallback: () => void = () => {}
 const initPromise = new Promise<void>((resolve) => {
-  // Failsafe: don't block forever if amaran has 0 devices (onInitialized may
-  // not fire when there are no node configs to gather).
   const timer = setTimeout(() => {
     if (!initialized) {
       console.warn("[bridge] init timeout — proceeding anyway")
@@ -92,7 +100,6 @@ async function listDevices(): Promise<RawDevice[]> {
   const data = await call<RawDevice[] | { data?: RawDevice[] }>((cb) =>
     controller.getDeviceList(cb),
   )
-  // The handler unwraps parsedData.data, but some responses double-wrap.
   if (Array.isArray(data)) return data
   if (data && Array.isArray((data as { data?: RawDevice[] }).data))
     return (data as { data: RawDevice[] }).data
@@ -150,11 +157,20 @@ async function buildSnapshot(): Promise<Snapshot> {
   }
 }
 
+let lastSnapshotJson = ""
 async function pushSnapshot(): Promise<Snapshot | null> {
   try {
     const snap = await buildSnapshot()
-    await redis.set(SNAPSHOT_KEY, snap, { ex: SNAPSHOT_TTL_SEC })
-    console.log(`[bridge] snapshot: ${snap.devices.length} device(s)`)
+    const json = JSON.stringify(snap.devices)
+    // Skip the write when nothing changed except the timestamp. Snapshot TTL is
+    // long enough that the previous SET is still alive; we just refresh it.
+    if (json === lastSnapshotJson) {
+      await redis.expire(SNAPSHOT_KEY, SNAPSHOT_TTL_SEC)
+    } else {
+      await redis.set(SNAPSHOT_KEY, JSON.stringify(snap), "EX", SNAPSHOT_TTL_SEC)
+      lastSnapshotJson = json
+      console.log(`[bridge] snapshot updated: ${snap.devices.length} device(s)`)
+    }
     return snap
   } catch (err) {
     console.error("[bridge] snapshot error:", err)
@@ -170,11 +186,9 @@ async function handleCommand(cmd: Command): Promise<unknown> {
 
   if (cmd.type === "toggle") {
     await call<unknown>((cb) => controller.toggleLight(cmd.deviceId, cb))
-    // Let the desktop app's mesh round-trip the state change before re-reading.
     await new Promise((r) => setTimeout(r, 300))
     const sleep = await getSleep(cmd.deviceId)
     const switchState: "on" | "off" = sleep === false ? "on" : "off"
-    // Refresh full snapshot so the UI sees the new state on next /devices poll.
     await pushSnapshot()
     return { deviceId: cmd.deviceId, switchState }
   }
@@ -182,33 +196,47 @@ async function handleCommand(cmd: Command): Promise<unknown> {
   return { error: "unknown command" }
 }
 
-// Wait for controller init before opening the polling loop.
 await initPromise
 
-let lastSnapshot = 0
-async function tick() {
-  if (Date.now() - lastSnapshot > SNAPSHOT_INTERVAL_MS) {
-    await pushSnapshot()
-    lastSnapshot = Date.now()
+// Periodic snapshot pusher (timer, independent of command loop).
+setInterval(() => {
+  pushSnapshot().catch((err) => console.error("[bridge] periodic snapshot:", err))
+}, SNAPSHOT_INTERVAL_MS)
+await pushSnapshot() // initial
+
+console.log("[bridge] worker started, BLPOP loop ready")
+
+// Blocking command loop. BLPOP holds open one TCP connection and returns
+// only when a command lands. Idle = zero requests.
+for (;;) {
+  let popped: [string, string] | null = null
+  try {
+    popped = await redisBlocking.blpop(CMD_LIST, BLOCK_TIMEOUT_SEC)
+  } catch (err) {
+    console.error("[bridge] blpop error, retrying in 2s:", err)
+    await new Promise((r) => setTimeout(r, 2_000))
+    continue
   }
+  if (!popped) continue // timeout — keep blocking
 
-  const raw = await redis.lpop<string | Command>(CMD_LIST)
-  if (raw == null) return
-
+  const [, raw] = popped
   let cmd: Command
   try {
-    cmd = typeof raw === "string" ? (JSON.parse(raw) as Command) : raw
+    cmd = JSON.parse(raw) as Command
   } catch {
-    console.error("[bridge] dropped malformed command:", raw)
-    return
+    console.error("[bridge] malformed cmd:", raw)
+    continue
   }
 
   const startedAt = Date.now()
   try {
     const result = await handleCommand(cmd)
-    await redis.set(`${REPLY_PREFIX}${cmd.reqId}`, result, {
-      ex: REPLY_TTL_SEC,
-    })
+    await redis.set(
+      `${REPLY_PREFIX}${cmd.reqId}`,
+      JSON.stringify(result),
+      "EX",
+      REPLY_TTL_SEC,
+    )
     console.log(
       `[bridge] ${cmd.type} ${"deviceId" in cmd ? cmd.deviceId : ""} -> ${
         Date.now() - startedAt
@@ -218,19 +246,10 @@ async function tick() {
     const message = err instanceof Error ? err.message : "unknown"
     await redis.set(
       `${REPLY_PREFIX}${cmd.reqId}`,
-      { error: message },
-      { ex: REPLY_TTL_SEC },
+      JSON.stringify({ error: message }),
+      "EX",
+      REPLY_TTL_SEC,
     )
     console.error("[bridge] cmd error:", message)
   }
-}
-
-console.log("[bridge] worker started, polling Redis…")
-for (;;) {
-  try {
-    await tick()
-  } catch (err) {
-    console.error("[bridge] tick error:", err)
-  }
-  await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
 }

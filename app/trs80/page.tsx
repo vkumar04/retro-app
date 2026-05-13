@@ -20,6 +20,21 @@ type AmaranState = {
   error: string | null
 }
 
+const GAMES = [
+  { slug: "pong", name: "PONG" },
+  { slug: "heist", name: "BANK ROBBERY" },
+  { slug: "zombies", name: "ZOMBIES" },
+  { slug: "tetris", name: "TETRIS" },
+  { slug: "lighthouse", name: "LIGHTHOUSE" },
+] as const
+
+const MEALS = [
+  { slug: "breakfast", name: "BREAKFAST" },
+  { slug: "lunch", name: "LUNCH" },
+  { slug: "dinner", name: "DINNER" },
+  { slug: "snack", name: "SNACK" },
+] as const
+
 export default function Trs80Page() {
   const [stDevices, setStDevices] = useState<Device[]>([])
   const [amaran, setAmaran] = useState<AmaranState>({
@@ -33,6 +48,7 @@ export default function Trs80Page() {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<Set<string>>(new Set())
   const [time, setTime] = useState("")
+  const [acks, setAcks] = useState<Record<string, number>>({})
 
   useEffect(() => {
     const update = () =>
@@ -99,6 +115,18 @@ export default function Trs80Page() {
     }
   }
 
+  // Fake tile feedback — flashes "ACK" for 1.6s then clears.
+  const ack = (key: string) => {
+    setAcks((m) => ({ ...m, [key]: Date.now() }))
+    setTimeout(() => {
+      setAcks((m) => {
+        const n = { ...m }
+        delete n[key]
+        return n
+      })
+    }, 1600)
+  }
+
   const allDevices = [...stDevices, ...amaran.devices]
   const onCount = allDevices.filter((d) => d.switchState === "on").length
 
@@ -155,7 +183,7 @@ export default function Trs80Page() {
           </div>
         )}
 
-        <Section title="SMARTTHINGS" status={`${stDevices.length} DEVICES`}>
+        <Section title="TV'S" status={`${stDevices.length} DEVICES`}>
           {loading ? (
             <SectionLoading />
           ) : stDevices.length === 0 ? (
@@ -171,7 +199,7 @@ export default function Trs80Page() {
         </Section>
 
         <Section
-          title="AMARAN"
+          title="LIGHTS"
           status={
             !amaran.configured
               ? "BRIDGE OFFLINE"
@@ -198,6 +226,52 @@ export default function Trs80Page() {
             />
           )}
         </Section>
+
+        <Section title="FOOD" status={`${MEALS.length} OPTIONS`}>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {MEALS.map((m) => {
+              const key = `food:${m.slug}`
+              return (
+                <FakeTile
+                  key={m.slug}
+                  caption="REQUEST"
+                  label={m.name}
+                  ack={!!acks[key]}
+                  onClick={() => ack(key)}
+                />
+              )
+            })}
+          </div>
+        </Section>
+
+        <Section title="LAUNDRY" status="1 OPTION">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <FakeTile
+              caption="REQUEST"
+              label="REQUEST LAUNDRY"
+              ack={!!acks["laundry:request"]}
+              onClick={() => ack("laundry:request")}
+            />
+          </div>
+        </Section>
+
+        <Section title="GAMES" status={`${GAMES.length} GAMES`}>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            {GAMES.map((g) => {
+              const key = `game:${g.slug}`
+              return (
+                <FakeTile
+                  key={g.slug}
+                  caption="GAME"
+                  label={g.name}
+                  actionLabel="PLAY ▶"
+                  ack={!!acks[key]}
+                  onClick={() => ack(key)}
+                />
+              )
+            })}
+          </div>
+        </Section>
       </main>
 
       <footer className="border-t border-border p-3 flex items-center justify-between text-xs text-muted-foreground tracking-[0.2em]">
@@ -205,7 +279,7 @@ export default function Trs80Page() {
           <span className="size-1.5 rounded-full bg-terminal-green pulse-glow" />
           MULTI-BRIDGE UPLINK
         </span>
-        <span>TRS-80 · DEVICE CTRL v1.1</span>
+        <span>TRS-80 · v1.2</span>
       </footer>
     </div>
   )
@@ -286,7 +360,7 @@ function DeviceGrid({
               } ${isPending ? "opacity-50 cursor-wait" : ""}`}
             >
               <div className="flex items-center justify-between text-[10px] tracking-[0.3em] text-muted-foreground">
-                <span>{(d.category ?? source).toUpperCase()}</span>
+                <span>{(d.category ?? (source === "amaran" ? "lights" : source)).toUpperCase()}</span>
                 <span
                   className={
                     isOn
@@ -320,5 +394,47 @@ function DeviceGrid({
         )
       })}
     </ul>
+  )
+}
+
+function FakeTile({
+  caption,
+  label,
+  actionLabel,
+  ack,
+  onClick,
+}: {
+  caption: string
+  label: string
+  actionLabel?: string
+  ack: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-left border p-4 transition-colors flex flex-col gap-2 ${
+        ack
+          ? "border-terminal-amber bg-terminal-amber/10 text-terminal-amber glow-amber"
+          : "border-border bg-card hover:border-terminal-green/60 text-foreground"
+      }`}
+    >
+      <div className="flex items-center justify-between text-[10px] tracking-[0.3em] text-muted-foreground">
+        <span>{caption}</span>
+        {actionLabel && <span>{ack ? "QUEUED ✓" : actionLabel}</span>}
+        {!actionLabel && <span>{ack ? "REQUESTED ✓" : "TAP"}</span>}
+      </div>
+      <div className="flex items-center gap-3">
+        <span
+          className={`size-3 shrink-0 rounded-full border-2 ${
+            ack
+              ? "border-terminal-amber bg-terminal-amber/80 pulse-glow"
+              : "border-muted-foreground"
+          }`}
+        />
+        <span className="text-base tracking-wide flex-1 truncate">{label}</span>
+      </div>
+    </button>
   )
 }

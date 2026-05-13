@@ -3,7 +3,13 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { VOICE_OPTIONS } from "@/app/_components/admin/voice-options"
-import { useGertyActions, useGertyStore, type Mood, type SystemStatus } from "@/lib/gerty-store"
+import {
+  useGertyActions,
+  useGertyLastError,
+  useGertyStore,
+  type Mood,
+  type SystemStatus,
+} from "@/lib/gerty-store"
 
 const MOODS: Mood[] = ["happy", "neutral", "sad", "confused", "thinking", "angry", "sleeping"]
 const STATUSES: SystemStatus[] = ["online", "maintenance", "offline"]
@@ -26,9 +32,11 @@ export default function AdminPage() {
     clearCompletedTodos,
   } = useGertyActions()
 
+  const lastError = useGertyLastError()
   const [message, setMessage] = useState("")
   const [todoInput, setTodoInput] = useState("")
   const [time, setTime] = useState("")
+  const isQuotaError = !!lastError && /max requests limit|quota/i.test(lastError)
 
   useEffect(() => {
     const update = () => setTime(new Date().toLocaleTimeString("en-US", { hour12: false }))
@@ -84,6 +92,23 @@ export default function AdminPage() {
       </header>
 
       <main className="p-4 md:p-6 max-w-5xl mx-auto">
+        {lastError && (
+          <div className="mb-4 border border-destructive/60 bg-destructive/10 text-destructive px-3 py-2 text-xs tracking-wider">
+            <div className="font-bold mb-1">
+              {isQuotaError ? "REDIS QUOTA EXCEEDED" : "STATE WRITE FAILED"}
+            </div>
+            <div className="text-destructive/80 font-normal break-words">
+              {lastError}
+            </div>
+            {isQuotaError && (
+              <div className="mt-1 text-muted-foreground font-normal">
+                Controls are disabled until the Upstash daily request quota
+                resets (UTC midnight) or you upgrade the plan.
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="mb-6 font-mono text-xs text-muted-foreground">
           <span className="text-terminal-green">root@gerty</span>
           <span className="text-muted-foreground">:</span>
