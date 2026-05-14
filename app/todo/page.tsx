@@ -60,7 +60,7 @@ export default function TodoPage() {
         </div>
       </header>
 
-      <main className="flex-1 p-[2vh] overflow-y-auto">
+      <main className="flex-1 p-[1vh] overflow-hidden">
         {todos.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
@@ -73,34 +73,34 @@ export default function TodoPage() {
             </div>
           </div>
         ) : (
-          <ul className="grid grid-cols-2 gap-[2vh]">
+          <ul className="grid grid-cols-2 grid-rows-2 gap-[1vh] h-full">
             {todos.map((todo) => {
               const Icon = pickIcon(todo.text)
               return (
-                <li key={todo.id}>
+                <li key={todo.id} className="h-full">
                   <button
                     type="button"
                     onClick={() => toggleTodo(todo.id)}
-                    className={`w-full h-full min-h-[26vh] flex flex-col items-center justify-center gap-[2vh] border p-[2.4vh] transition-all ${
+                    className={`w-full h-full flex flex-col items-center justify-center gap-[2.5vh] border p-[2vh] transition-all ${
                       todo.done
-                        ? "border-terminal-green bg-terminal-green/10 glow-green"
-                        : "border-border/40 bg-card opacity-30 hover:opacity-60"
+                        ? "border-border/40 bg-card opacity-30 hover:opacity-60"
+                        : "border-terminal-green bg-terminal-green/10 glow-green"
                     }`}
                   >
                     <Icon
                       className={
                         todo.done
-                          ? "text-terminal-green"
-                          : "text-muted-foreground"
+                          ? "text-muted-foreground"
+                          : "text-terminal-green"
                       }
-                      style={{ width: "12vh", height: "12vh" }}
-                      strokeWidth={1.6}
+                      style={{ width: "22vh", height: "22vh" }}
+                      strokeWidth={1.4}
                     />
                     <span
-                      className={`text-[2.6vh] tracking-[0.2em] uppercase text-center ${
+                      className={`text-[3.4vh] tracking-[0.25em] uppercase text-center ${
                         todo.done
-                          ? "text-terminal-green"
-                          : "text-muted-foreground"
+                          ? "text-muted-foreground"
+                          : "text-terminal-green"
                       }`}
                     >
                       {todo.text}
@@ -128,11 +128,13 @@ export default function TodoPage() {
 // Falls back to a checkbox icon when nothing matches.
 function pickIcon(text: string): LucideIcon {
   const t = text.toLowerCase()
-  if (/eat|meal|food|breakfast|lunch|dinner|snack/.test(t)) return UtensilsCrossed
+  if (/eat|meal|food|nutrition|breakfast|lunch|dinner|snack/.test(t))
+    return UtensilsCrossed
   if (/walk|step|stroll/.test(t)) return Footprints
-  if (/run|cardio|exercis|train|workout/.test(t)) return Activity
-  if (/lift|gym|weights?|dumbbell|press|squat|deadlift/.test(t)) return Dumbbell
-  if (/photo|camera|picture|selfie|shoot/.test(t)) return Camera
+  if (/lift|gym|weights?|dumbbell|press|squat|deadlift|workout/.test(t))
+    return Dumbbell
+  if (/run|cardio|exercis|train/.test(t)) return Activity
+  if (/photo|camera|picture|selfie|shoot|film/.test(t)) return Camera
   if (/read|book|study/.test(t)) return BookOpen
   if (/sleep|nap|bed|rest/.test(t)) return Moon
   if (/sun|morning|wake/.test(t)) return Sun

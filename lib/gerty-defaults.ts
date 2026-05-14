@@ -62,5 +62,10 @@ export const defaultGertyState: GertyState = {
   showScanlines: true,
   idleAnimation: true,
   skeletonWalking: false,
-  todos: [],
+  todos: [
+    { id: "task-nutrition", text: "daily nutrition", done: false, createdAt: 0 },
+    { id: "task-steps", text: "steps", done: false, createdAt: 0 },
+    { id: "task-workout", text: "workout", done: false, createdAt: 0 },
+    { id: "task-filming", text: "filming", done: false, createdAt: 0 },
+  ],
 }
