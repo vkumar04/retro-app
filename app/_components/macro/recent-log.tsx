@@ -29,7 +29,7 @@ export function RecentLog() {
                 </span>
                 <div className="flex items-center gap-[1.4vh] text-[1.2vh] tabular-nums tracking-wider">
                   <span className="text-terminal-green flex items-center gap-1">
-                    <Flame size={11} color="oklch(0.78 0.22 145)" />
+                    <Flame size={11} color="oklch(0.78 0.22 245)" />
                     {cal} KCAL
                   </span>
                   <span style={{ color: COLORS.protein }}>P {m.protein}G</span>

@@ -30,7 +30,7 @@ export const CONSUMED = {
 }
 
 export const COLORS = {
-  calories: "oklch(0.78 0.22 145)", // green
+  calories: "oklch(0.78 0.22 245)", // green
   protein: "oklch(0.78 0.2 165)", // teal-green
   carbs: "oklch(0.85 0.2 85)", // amber
   fat: "oklch(0.65 0.2 200)", // cyan

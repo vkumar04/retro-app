@@ -33,19 +33,19 @@ export default function SkeletonPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-white relative">
+    <div className="min-h-screen bg-black relative">
       <Canvas
         camera={{ position: [0, 1.0, 3.0], fov: 50 }}
         className="!fixed inset-0"
       >
-        <color attach="background" args={["#ffffff"]} />
+        <color attach="background" args={["#000000"]} />
 
-        {/* Studio lighting + envmap for the glossy translucent blue look. */}
-        <Environment preset="studio" environmentIntensity={0.8} />
+        {/* Studio envmap keeps the glossy reflections on the blue material. */}
+        <Environment preset="studio" environmentIntensity={0.5} />
 
-        <ambientLight intensity={0.9} />
-        <directionalLight position={[3, 6, 4]} intensity={1.2} />
-        <directionalLight position={[-4, 3, -2]} intensity={0.6} />
+        <ambientLight intensity={0.4} />
+        <directionalLight position={[3, 6, 4]} intensity={1.0} />
+        <directionalLight position={[-4, 3, -2]} intensity={0.5} color="#2da6ff" />
 
         <Suspense fallback={null}>
           <SkeletonGLTF walking={walking} />
@@ -86,6 +86,8 @@ export default function SkeletonPage() {
           {walking ? "in motion" : "not in motion"}
         </div>
       </div>
+
+      <div className="scanlines" />
 
       <audio ref={audioRef} hidden />
     </div>

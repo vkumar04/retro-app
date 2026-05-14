@@ -37,7 +37,7 @@ export function WeeklySteps() {
                 dataKey="day"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "oklch(0.55 0.1 145)", fontSize: 12 }}
+                tick={{ fill: "oklch(0.55 0.1 245)", fontSize: 12 }}
               />
               <YAxis hide />
               <Bar dataKey="steps" fill="oklch(0.65 0.2 200)" radius={[2, 2, 0, 0]} />

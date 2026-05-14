@@ -117,8 +117,8 @@ export function LiveStats() {
               <AreaChart data={calories}>
                 <defs>
                   <linearGradient id="colorCalories" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="oklch(0.75 0.22 145)" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="oklch(0.75 0.22 145)" stopOpacity={0} />
+                    <stop offset="5%" stopColor="oklch(0.75 0.22 245)" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="oklch(0.75 0.22 245)" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="oklch(0.85 0.2 85)" stopOpacity={0.4} />
@@ -129,15 +129,15 @@ export function LiveStats() {
                   dataKey="hour"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "oklch(0.55 0.1 145)", fontSize: 10 }}
+                  tick={{ fill: "oklch(0.55 0.1 245)", fontSize: 10 }}
                   interval={5}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "oklch(0.55 0.1 145)", fontSize: 10 }}
+                  tick={{ fill: "oklch(0.55 0.1 245)", fontSize: 10 }}
                 />
-                <Area type="monotone" dataKey="calories" stroke="oklch(0.75 0.22 145)" strokeWidth={2} fill="url(#colorCalories)" />
+                <Area type="monotone" dataKey="calories" stroke="oklch(0.75 0.22 245)" strokeWidth={2} fill="url(#colorCalories)" />
                 <Area type="monotone" dataKey="active" stroke="oklch(0.85 0.2 85)" strokeWidth={2} fill="url(#colorActive)" />
               </AreaChart>
             </ResponsiveContainer>

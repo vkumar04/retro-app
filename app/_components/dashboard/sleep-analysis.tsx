@@ -45,10 +45,10 @@ export function SleepAnalysis() {
                 dataKey="day"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "oklch(0.55 0.1 145)", fontSize: 12 }}
+                tick={{ fill: "oklch(0.55 0.1 245)", fontSize: 12 }}
               />
               <YAxis hide />
-              <Bar dataKey="deep" stackId="a" fill="oklch(0.75 0.22 145)" />
+              <Bar dataKey="deep" stackId="a" fill="oklch(0.75 0.22 245)" />
               <Bar dataKey="light" stackId="a" fill="oklch(0.65 0.2 200)" />
               <Bar dataKey="rem" stackId="a" fill="oklch(0.85 0.2 85)" radius={[2, 2, 0, 0]} />
             </BarChart>

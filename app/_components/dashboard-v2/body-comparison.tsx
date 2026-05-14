@@ -63,8 +63,8 @@ function BodySilhouette({
     <svg viewBox="0 0 200 320" className="h-[22vh] w-auto">
       <path
         d={bodyPath}
-        fill={highlight ? "oklch(0.75 0.22 145 / 0.85)" : "oklch(0.55 0.1 145 / 0.5)"}
-        stroke={highlight ? "oklch(0.85 0.18 145)" : "oklch(0.45 0.08 145)"}
+        fill={highlight ? "oklch(0.75 0.22 245 / 0.85)" : "oklch(0.55 0.1 245 / 0.5)"}
+        stroke={highlight ? "oklch(0.85 0.18 245)" : "oklch(0.45 0.08 245)"}
         strokeWidth="1.5"
       />
     </svg>

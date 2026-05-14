@@ -22,7 +22,7 @@ const TREND = [
   { month: 24, total: 175, fat: 95, lean: 140 },
 ]
 
-const GREEN = "oklch(0.75 0.22 145)"
+const GREEN = "oklch(0.78 0.18 35)"
 const AMBER = "oklch(0.85 0.2 85)"
 const CYAN = "oklch(0.65 0.2 200)"
 
@@ -43,25 +43,25 @@ export function CompositionTrend() {
       <div className="flex-1 mt-[1.5vh] min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={TREND} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
-            <CartesianGrid stroke="oklch(0.25 0.08 145 / 0.4)" strokeDasharray="2 4" />
+            <CartesianGrid stroke="oklch(0.25 0.08 245 / 0.4)" strokeDasharray="2 4" />
             <XAxis
               dataKey="month"
-              stroke="oklch(0.55 0.1 145)"
-              tick={{ fontSize: 14, fill: "oklch(0.55 0.1 145)" }}
+              stroke="oklch(0.55 0.1 245)"
+              tick={{ fontSize: 14, fill: "oklch(0.55 0.1 245)" }}
               tickFormatter={(v) => `${v}M`}
             />
             <YAxis
-              stroke="oklch(0.55 0.1 145)"
-              tick={{ fontSize: 14, fill: "oklch(0.55 0.1 145)" }}
+              stroke="oklch(0.55 0.1 245)"
+              tick={{ fontSize: 14, fill: "oklch(0.55 0.1 245)" }}
               domain={[0, 400]}
               ticks={[0, 100, 200, 300, 400]}
             />
             <Tooltip
               contentStyle={{
                 background: "oklch(0.1 0.015 150)",
-                border: "1px solid oklch(0.25 0.08 145)",
+                border: "1px solid oklch(0.25 0.08 245)",
                 borderRadius: 0,
-                color: "oklch(0.85 0.18 145)",
+                color: "oklch(0.85 0.18 245)",
                 fontFamily: "monospace",
               }}
               labelFormatter={(v) => `MONTH ${v}`}

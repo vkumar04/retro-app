@@ -79,7 +79,7 @@ export function CaloriesHero() {
               dataKey="value"
               cornerRadius={12}
               fill={color}
-              background={{ fill: "oklch(0.18 0.04 145 / 0.6)" }}
+              background={{ fill: "oklch(0.18 0.04 245 / 0.6)" }}
             />
           </RadialBarChart>
         </ResponsiveContainer>
