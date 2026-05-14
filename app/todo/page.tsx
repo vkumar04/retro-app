@@ -60,40 +60,44 @@ export default function TodoPage() {
             </div>
           </div>
         ) : (
-          <ul className="flex flex-col gap-[1.2vh]">
+          <ul className="grid grid-cols-2 gap-[2vh]">
             {todos.map((todo, i) => (
               <li key={todo.id}>
                 <button
                   type="button"
                   onClick={() => toggleTodo(todo.id)}
-                  className={`w-full text-left flex items-center gap-[2vh] border p-[1.6vh] transition-colors ${
+                  className={`w-full h-full min-h-[18vh] text-left flex flex-col justify-between gap-[1.6vh] border p-[2.4vh] transition-colors ${
                     todo.done
-                      ? "border-border/40 bg-card/50"
+                      ? "border-border/30 bg-card/30 opacity-50 grayscale"
                       : "border-border bg-card hover:border-terminal-green/60"
                   }`}
                 >
-                  <Checkbox done={todo.done} />
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`text-[1.3vh] tabular-nums tracking-[0.3em] ${
+                        todo.done ? "text-muted-foreground/60" : "text-muted-foreground"
+                      }`}
+                    >
+                      TASK {(i + 1).toString().padStart(2, "0")}
+                    </span>
+                    <span
+                      className={`text-[1.2vh] tracking-[0.3em] ${
+                        todo.done ? "text-muted-foreground/60" : "text-terminal-green"
+                      }`}
+                    >
+                      {todo.done ? "DONE" : "PENDING"}
+                    </span>
+                  </div>
                   <span
-                    className={`text-muted-foreground text-[1.4vh] tabular-nums tracking-wider ${
-                      todo.done ? "opacity-40" : ""
-                    }`}
-                  >
-                    {(i + 1).toString().padStart(2, "0")}
-                  </span>
-                  <span
-                    className={`flex-1 text-[3vh] tracking-[0.05em] transition-all ${
+                    className={`text-[3.4vh] tracking-[0.05em] leading-tight transition-all ${
                       todo.done
-                        ? "text-muted-foreground line-through opacity-50"
+                        ? "text-muted-foreground line-through"
                         : "text-foreground glow-green"
                     }`}
                   >
                     {todo.text}
                   </span>
-                  {todo.done && (
-                    <span className="text-terminal-amber text-[1.4vh] tracking-[0.3em]">
-                      DONE
-                    </span>
-                  )}
+                  <Checkbox done={todo.done} />
                 </button>
               </li>
             ))}

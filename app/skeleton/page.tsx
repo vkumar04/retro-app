@@ -3,8 +3,9 @@
 import { Environment, OrbitControls } from "@react-three/drei"
 import { Canvas } from "@react-three/fiber"
 import Link from "next/link"
-import { Suspense, useEffect } from "react"
+import { Suspense, useEffect, useRef } from "react"
 import { SkeletonGLTF } from "@/app/_components/skeleton/skeleton-gltf"
+import { useSpeaker } from "@/hooks/use-speaker"
 import { useGertyActions, useGertyStore } from "@/lib/gerty-store"
 
 export default function SkeletonPage() {
@@ -12,6 +13,16 @@ export default function SkeletonPage() {
   // update `skeletonWalking` and the change broadcasts here via SSE.
   const walking = useGertyStore((s) => s.skeletonWalking)
   const { setSkeletonWalking } = useGertyActions()
+  const { audioRef, speak } = useSpeaker()
+  const prevWalking = useRef(walking)
+
+  // Speak "in motion" when the skeleton transitions into walking.
+  useEffect(() => {
+    if (walking && !prevWalking.current) {
+      speak("in motion")
+    }
+    prevWalking.current = walking
+  }, [walking, speak])
 
   // Auto-start walking when the page first opens — most visits want to see
   // movement, not the bind pose. After this, the admin toggle takes over.
@@ -82,9 +93,7 @@ export default function SkeletonPage() {
         </div>
       </header>
 
-      <footer className="fixed bottom-0 left-0 right-0 px-4 py-3 z-10 text-center font-mono text-[10px] text-muted-foreground">
-        meshy ai skeleton // clips: Walking · Running · Sleep_Normally
-      </footer>
+      <audio ref={audioRef} hidden />
     </div>
   )
 }
