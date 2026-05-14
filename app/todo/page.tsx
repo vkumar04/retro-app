@@ -1,11 +1,28 @@
 "use client"
 
+import {
+  Activity,
+  BookOpen,
+  Camera,
+  CheckSquare,
+  Dumbbell,
+  Footprints,
+  type LucideIcon,
+  Moon,
+  Phone,
+  Pill,
+  ShoppingCart,
+  Sparkles,
+  Sun,
+  UtensilsCrossed,
+} from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useGertyActions, useGertyStore } from "@/lib/gerty-store"
 
-// Vertical 4K display: shows the active todo list with large, readable
-// rows. Tapping a row toggles its done state. Admin manages add/remove.
+// Vertical 4K display: shows the active todo list as big icon tiles, two
+// per row. Tap toggles done. Completed tiles are bright + glowing; pending
+// tiles are dim but still readable.
 export default function TodoPage() {
   const todos = useGertyStore((s) => s.todos)
   const { toggleTodo } = useGertyActions()
@@ -32,7 +49,7 @@ export default function TodoPage() {
         </Link>
         <div className="text-center">
           <h1 className="text-terminal-green text-[3vh] tracking-[0.5em] font-bold glow-green">
-            TASK QUEUE
+            DAILY TASKS
           </h1>
           <div className="text-muted-foreground text-[1.4vh] tracking-[0.3em] mt-[0.4vh]">
             {completed} / {todos.length} COMPLETE
@@ -53,54 +70,45 @@ export default function TodoPage() {
               <div className="text-muted-foreground/60 text-[1.6vh] tracking-[0.3em] mt-[1vh]">
                 ADD VIA ADMIN PANEL
               </div>
-              <div className="mt-[3vh] text-terminal-green text-[1.4vh]">
-                <span>{"> "}</span>
-                <span className="cursor-blink">█</span>
-              </div>
             </div>
           </div>
         ) : (
           <ul className="grid grid-cols-2 gap-[2vh]">
-            {todos.map((todo, i) => (
-              <li key={todo.id}>
-                <button
-                  type="button"
-                  onClick={() => toggleTodo(todo.id)}
-                  className={`w-full h-full min-h-[18vh] text-left flex flex-col justify-between gap-[1.6vh] border p-[2.4vh] transition-colors ${
-                    todo.done
-                      ? "border-border/30 bg-card/30 opacity-50 grayscale"
-                      : "border-border bg-card hover:border-terminal-green/60"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-[1.3vh] tabular-nums tracking-[0.3em] ${
-                        todo.done ? "text-muted-foreground/60" : "text-muted-foreground"
-                      }`}
-                    >
-                      TASK {(i + 1).toString().padStart(2, "0")}
-                    </span>
-                    <span
-                      className={`text-[1.2vh] tracking-[0.3em] ${
-                        todo.done ? "text-muted-foreground/60" : "text-terminal-green"
-                      }`}
-                    >
-                      {todo.done ? "DONE" : "PENDING"}
-                    </span>
-                  </div>
-                  <span
-                    className={`text-[3.4vh] tracking-[0.05em] leading-tight transition-all ${
+            {todos.map((todo) => {
+              const Icon = pickIcon(todo.text)
+              return (
+                <li key={todo.id}>
+                  <button
+                    type="button"
+                    onClick={() => toggleTodo(todo.id)}
+                    className={`w-full h-full min-h-[26vh] flex flex-col items-center justify-center gap-[2vh] border p-[2.4vh] transition-all ${
                       todo.done
-                        ? "text-muted-foreground line-through"
-                        : "text-foreground glow-green"
+                        ? "border-terminal-green bg-terminal-green/10 glow-green"
+                        : "border-border/40 bg-card opacity-30 hover:opacity-60"
                     }`}
                   >
-                    {todo.text}
-                  </span>
-                  <Checkbox done={todo.done} />
-                </button>
-              </li>
-            ))}
+                    <Icon
+                      className={
+                        todo.done
+                          ? "text-terminal-green"
+                          : "text-muted-foreground"
+                      }
+                      style={{ width: "12vh", height: "12vh" }}
+                      strokeWidth={1.6}
+                    />
+                    <span
+                      className={`text-[2.6vh] tracking-[0.2em] uppercase text-center ${
+                        todo.done
+                          ? "text-terminal-green"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {todo.text}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         )}
       </main>
@@ -116,26 +124,21 @@ export default function TodoPage() {
   )
 }
 
-function Checkbox({ done }: { done: boolean }) {
-  return (
-    <span
-      className={`size-[3vh] shrink-0 border-2 flex items-center justify-center transition-colors ${
-        done
-          ? "border-terminal-amber bg-terminal-amber/10"
-          : "border-terminal-green"
-      }`}
-    >
-      {done && (
-        <svg viewBox="0 0 24 24" className="size-[2vh] text-terminal-amber" fill="none">
-          <path
-            d="M4 12 L10 18 L20 6"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      )}
-    </span>
-  )
+// Map a task's text to a lucide icon by simple keyword sniffing.
+// Falls back to a checkbox icon when nothing matches.
+function pickIcon(text: string): LucideIcon {
+  const t = text.toLowerCase()
+  if (/eat|meal|food|breakfast|lunch|dinner|snack/.test(t)) return UtensilsCrossed
+  if (/walk|step|stroll/.test(t)) return Footprints
+  if (/run|cardio|exercis|train|workout/.test(t)) return Activity
+  if (/lift|gym|weights?|dumbbell|press|squat|deadlift/.test(t)) return Dumbbell
+  if (/photo|camera|picture|selfie|shoot/.test(t)) return Camera
+  if (/read|book|study/.test(t)) return BookOpen
+  if (/sleep|nap|bed|rest/.test(t)) return Moon
+  if (/sun|morning|wake/.test(t)) return Sun
+  if (/pill|med|vitamin|supplement/.test(t)) return Pill
+  if (/call|phone|ring/.test(t)) return Phone
+  if (/shop|grocery|store|buy/.test(t)) return ShoppingCart
+  if (/clean|tidy|wash/.test(t)) return Sparkles
+  return CheckSquare
 }

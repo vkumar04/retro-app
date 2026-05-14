@@ -74,6 +74,19 @@ export default function SkeletonPage() {
         </div>
       </header>
 
+      <div className="fixed bottom-[6vh] left-0 right-0 z-10 text-center font-mono pointer-events-none">
+        <div
+          className="text-[4.5vh] tracking-[0.4em] font-bold uppercase"
+          style={{
+            color: "#2da6ff",
+            opacity: walking ? 1 : 0.45,
+            textShadow: walking ? "0 0 18px rgba(45, 166, 255, 0.7)" : "none",
+          }}
+        >
+          {walking ? "in motion" : "not in motion"}
+        </div>
+      </div>
+
       <audio ref={audioRef} hidden />
     </div>
   )
