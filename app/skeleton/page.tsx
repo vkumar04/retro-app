@@ -33,42 +33,23 @@ export default function SkeletonPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen bg-white relative">
       <Canvas
-        shadows
-        // Camera framed for a tall (portrait) viewport — model sits on the
-        // ground plane and stays fully visible without head clipping.
         camera={{ position: [0, 1.0, 3.0], fov: 50 }}
         className="!fixed inset-0"
       >
-        <color attach="background" args={["#08120c"]} />
-        <fog attach="fog" args={["#08120c", 5, 14]} />
+        <color attach="background" args={["#ffffff"]} />
 
-        {/* Environment provides an IBL envmap so PBR materials (metallic/rough)
-            actually render. Without it, Meshy/glTF models often appear black or
-            invisible because they rely on reflected ambient light. */}
-        <Environment preset="city" environmentIntensity={0.6} />
+        {/* Studio lighting + envmap for the glossy translucent blue look. */}
+        <Environment preset="studio" environmentIntensity={0.8} />
 
-        <ambientLight intensity={0.6} />
-        <directionalLight
-          position={[3, 6, 4]}
-          intensity={1.4}
-          castShadow
-          shadow-mapSize-width={1024}
-          shadow-mapSize-height={1024}
-        />
-        <directionalLight position={[-4, 3, -2]} intensity={0.5} color="#7fffb2" />
+        <ambientLight intensity={0.9} />
+        <directionalLight position={[3, 6, 4]} intensity={1.2} />
+        <directionalLight position={[-4, 3, -2]} intensity={0.6} />
 
         <Suspense fallback={null}>
           <SkeletonGLTF walking={walking} />
         </Suspense>
-
-        {/* Ground */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <circleGeometry args={[3.5, 64]} />
-          <meshStandardMaterial color="#0d1a12" roughness={1} />
-        </mesh>
-        <gridHelper args={[7, 14, "#1c2a20", "#162018"]} position={[0, 0.001, 0]} />
 
         <OrbitControls
           enablePan={false}

@@ -2,7 +2,14 @@
 
 import { useAnimations, useGLTF } from "@react-three/drei"
 import { useEffect, useMemo, useRef } from "react"
-import { Box3, type Group, Vector3 } from "three"
+import {
+  Box3,
+  Color,
+  type Group,
+  type Mesh,
+  MeshPhysicalMaterial,
+  Vector3,
+} from "three"
 
 const MODEL_PATH = "/models/skeleton.glb"
 
@@ -18,6 +25,30 @@ export function SkeletonGLTF({ walking }: { walking: boolean }) {
 
   const group = useRef<Group>(null)
   const { actions, names } = useAnimations(animations, group)
+
+  // Override every mesh's material with a glossy translucent blue PBR
+  // material — matches the medical-render reference image.
+  useEffect(() => {
+    const blue = new MeshPhysicalMaterial({
+      color: new Color("#2da6ff"),
+      roughness: 0.25,
+      metalness: 0.0,
+      transmission: 0.35,
+      thickness: 0.5,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.1,
+      transparent: true,
+      opacity: 0.95,
+    })
+    scene.traverse((obj) => {
+      const mesh = obj as Mesh
+      if (mesh.isMesh) {
+        mesh.material = blue
+        mesh.castShadow = false
+        mesh.receiveShadow = false
+      }
+    })
+  }, [scene])
 
   // Auto-fit: scale so the model's longest dimension is ~2 units, then drop
   // it onto y=0 so it stands on the ground plane.
