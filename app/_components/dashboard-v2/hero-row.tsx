@@ -1,48 +1,51 @@
-// Top hero strip — four equal-width key metrics. Designed to read from
-// across a room on a 90" 4K display. Numbers are the focal point.
-const METRICS: {
-  label: string
-  value: string
-  unit?: string
-  delta?: string
-  tone: "green" | "amber" | "muted"
-  /** Whether this metric should be visually dominant (the headline). */
-  hero?: boolean
-}[] = [
-  {
-    label: "TOTAL POUNDS LOST",
-    value: "45",
-    unit: "LBS",
-    tone: "green",
-    hero: true,
-  },
-  {
-    label: "CURRENT WEIGHT",
-    value: "320",
-    unit: "LBS",
-    delta: "-12.3%",
-    tone: "green",
-  },
-  {
-    label: "CURRENT FAT MASS",
-    value: "180",
-    unit: "LBS",
-    delta: "-20.1%",
-    tone: "green",
-  },
-  {
-    label: "BODY FAT",
-    value: "31.2",
-    unit: "%",
-    delta: "WAS 42%",
-    tone: "amber",
-  },
-]
+"use client"
+
+import { useGertyStore } from "@/lib/gerty-store"
 
 export function HeroRow() {
+  const s = useGertyStore((st) => st.homeStats)
+
+  const metrics: {
+    label: string
+    value: string
+    unit?: string
+    delta?: string
+    tone: "green" | "amber" | "muted"
+    hero?: boolean
+  }[] = [
+    {
+      label: "TOTAL POUNDS LOST",
+      value: s.lbsLost.toString(),
+      unit: "LBS",
+      tone: "green",
+      hero: true,
+    },
+    {
+      label: "CURRENT WEIGHT",
+      value: s.currentWeightLbs.toString(),
+      unit: "LBS",
+      delta: `${s.weightDeltaPct > 0 ? "+" : ""}${s.weightDeltaPct}%`,
+      tone: "green",
+    },
+    {
+      label: "CURRENT FAT MASS",
+      value: s.currentFatMassLbs.toString(),
+      unit: "LBS",
+      delta: `${s.fatMassDeltaPct > 0 ? "+" : ""}${s.fatMassDeltaPct}%`,
+      tone: "green",
+    },
+    {
+      label: "BODY FAT",
+      value: s.bodyFatPct.toString(),
+      unit: "%",
+      delta: `WAS ${s.bodyFatStartPct}%`,
+      tone: "amber",
+    },
+  ]
+
   return (
     <div className="grid grid-cols-4 gap-[1.6vh] font-mono">
-      {METRICS.map((m) => (
+      {metrics.map((m) => (
         <Cell key={m.label} {...m} />
       ))}
     </div>

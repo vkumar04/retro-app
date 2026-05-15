@@ -1,9 +1,14 @@
-import Image from "next/image"
+"use client"
 
-// DEXA body composition card. Silhouette is the actual scan image extracted
-// from the patient's DXA report PDF.
+import Image from "next/image"
+import { useGertyStore } from "@/lib/gerty-store"
+
 export function BodyComposition() {
-  const total = 56 + 124 + 140
+  const s = useGertyStore((st) => st.homeStats)
+  const visceral = s.visceralFatLbs
+  const subcutaneous = s.subcutaneousFatLbs
+  const lean = s.leanMassLbs
+  const total = visceral + subcutaneous + lean
   return (
     <div className="h-full border border-border bg-card font-mono p-[1.6vh] relative overflow-hidden">
       <BracketCorners />
@@ -26,23 +31,23 @@ export function BodyComposition() {
           <Callout
             color="bg-yellow-300"
             label="VISCERAL FAT"
-            value="56 LBS"
+            value={`${visceral} LBS`}
             note="(yellow)"
           />
           <Callout
             color="bg-orange-400"
             label="SUBCUTANEOUS FAT"
-            value="124 LBS"
+            value={`${subcutaneous} LBS`}
             note="(orange)"
           />
-          <Callout color="bg-foreground" label="LEAN MASS" value="140 LBS" note="(white)" />
+          <Callout color="bg-foreground" label="LEAN MASS" value={`${lean} LBS`} note="(white)" />
           <div className="mt-[0.6vh] pt-[1vh] border-t border-border text-muted-foreground text-[1.5vh] flex justify-between tracking-[0.3em]">
             <span>TOTAL</span>
             <span className="text-terminal-green tabular-nums glow-green">{total} LBS</span>
           </div>
           <div className="text-muted-foreground text-[1.2vh] tracking-[0.2em] flex justify-between">
             <span>FAT %</span>
-            <span className="text-terminal-amber">31.2%</span>
+            <span className="text-terminal-amber">{s.bodyFatPct}%</span>
           </div>
         </div>
       </div>

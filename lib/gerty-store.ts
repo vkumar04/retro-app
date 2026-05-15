@@ -6,12 +6,13 @@ import {
   defaultGertyState,
   type GertyMessage,
   type GertyState,
+  type HomeStats,
   type Mood,
   type SystemStatus,
   type Todo,
 } from "./gerty-defaults"
 
-export type { GertyMessage, GertyState, Mood, SystemStatus, Todo }
+export type { GertyMessage, GertyState, HomeStats, Mood, SystemStatus, Todo }
 
 let state: GertyState = defaultGertyState
 let connected = false
@@ -133,6 +134,7 @@ export const gertyStore = {
   toggleTodo: (id: string) => dispatch({ type: "toggleTodo", id }),
   removeTodo: (id: string) => dispatch({ type: "removeTodo", id }),
   clearCompletedTodos: () => dispatch({ type: "clearCompletedTodos" }),
+  setHomeStats: (stats: Partial<HomeStats>) => dispatch({ type: "setHomeStats", stats }),
 }
 
 export function useGertyStore<T>(selector: (state: GertyState) => T): T {

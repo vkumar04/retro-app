@@ -2,6 +2,7 @@ import {
   defaultGertyState,
   type GertyMessage,
   type GertyState,
+  type HomeStats,
   type Mood,
   type SystemStatus,
 } from "./gerty-defaults"
@@ -25,6 +26,7 @@ export type GertyAction =
   | { type: "toggleTodo"; id: string }
   | { type: "removeTodo"; id: string }
   | { type: "clearCompletedTodos" }
+  | { type: "setHomeStats"; stats: Partial<HomeStats> }
   | { type: "reset" }
 
 export function applyAction(state: GertyState, action: GertyAction): GertyState {
@@ -97,6 +99,8 @@ export function applyAction(state: GertyState, action: GertyAction): GertyState 
       }
     case "clearCompletedTodos":
       return { ...state, todos: state.todos.filter((t) => !t.done) }
+    case "setHomeStats":
+      return { ...state, homeStats: { ...state.homeStats, ...action.stats } }
     case "reset":
       return { ...defaultGertyState }
   }

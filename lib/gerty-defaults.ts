@@ -22,6 +22,29 @@ export interface Todo {
   createdAt: number
 }
 
+export interface HomeStats {
+  lbsLost: number
+  currentWeightLbs: number
+  currentFatMassLbs: number
+  bodyFatPct: number
+  bodyFatStartPct: number
+  weightDeltaPct: number
+  fatMassDeltaPct: number
+  visceralFatLbs: number
+  subcutaneousFatLbs: number
+  leanMassLbs: number
+  patientName: string
+  patientId: string
+  age: number
+  heightCm: number
+  weightKg: number
+  startWeightLbs: number
+  targetWeightLbs: number
+  bodyFatGoalPct: number
+  daysActive: number
+  streakDays: number
+}
+
 export interface GertyState {
   mood: Mood
   brightness: number
@@ -35,6 +58,30 @@ export interface GertyState {
   idleAnimation: boolean
   skeletonWalking: boolean
   todos: Todo[]
+  homeStats: HomeStats
+}
+
+export const defaultHomeStats: HomeStats = {
+  lbsLost: 45,
+  currentWeightLbs: 320,
+  currentFatMassLbs: 180,
+  bodyFatPct: 31.2,
+  bodyFatStartPct: 42,
+  weightDeltaPct: -12.3,
+  fatMassDeltaPct: -20.1,
+  visceralFatLbs: 56,
+  subcutaneousFatLbs: 124,
+  leanMassLbs: 140,
+  patientName: "ADAM RABY",
+  patientId: "PATIENT_01",
+  age: 34,
+  heightCm: 170,
+  weightKg: 80.5,
+  startWeightLbs: 365,
+  targetWeightLbs: 200,
+  bodyFatGoalPct: 18,
+  daysActive: 218,
+  streakDays: 42,
 }
 
 export const defaultGertyState: GertyState = {
@@ -68,4 +115,5 @@ export const defaultGertyState: GertyState = {
     { id: "task-workout", text: "workout", done: false, createdAt: 0 },
     { id: "task-filming", text: "filming", done: false, createdAt: 0 },
   ],
+  homeStats: defaultHomeStats,
 }

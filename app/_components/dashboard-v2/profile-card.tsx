@@ -2,27 +2,25 @@
 
 import Image from "next/image"
 import { useEffect, useState } from "react"
+import { useGertyStore } from "@/lib/gerty-store"
 
-const PATIENT = {
-  name: "ADAM RABY",
-  id: "PATIENT_01",
-  age: 34,
-  heightCm: 170,
-  weightKg: 80.5,
-  startWeightLbs: 365,
-  currentWeightLbs: 320,
-  targetWeightLbs: 200,
-  bodyFatStart: 42,
-  bodyFatNow: 31,
-  bodyFatGoal: 18,
-  daysActive: 218,
-  streakDays: 42,
-}
-
-// Single full-height left-column panel that consolidates identity, progress
-// targets, and live vitals into one cohesive "patient" card. Sized to fill
-// the entire left column on a 90" 4K display.
 export function ProfileCard() {
+  const s = useGertyStore((st) => st.homeStats)
+  const PATIENT = {
+    name: s.patientName,
+    id: s.patientId,
+    age: s.age,
+    heightCm: s.heightCm,
+    weightKg: s.weightKg,
+    startWeightLbs: s.startWeightLbs,
+    currentWeightLbs: s.currentWeightLbs,
+    targetWeightLbs: s.targetWeightLbs,
+    bodyFatStart: s.bodyFatStartPct,
+    bodyFatNow: s.bodyFatPct,
+    bodyFatGoal: s.bodyFatGoalPct,
+    daysActive: s.daysActive,
+    streakDays: s.streakDays,
+  }
   const lostLbs = PATIENT.startWeightLbs - PATIENT.currentWeightLbs
   const goalLbs = PATIENT.startWeightLbs - PATIENT.targetWeightLbs
   const goalProgress = Math.min(1, lostLbs / goalLbs)

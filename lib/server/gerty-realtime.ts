@@ -13,6 +13,7 @@ export async function getServerState(): Promise<GertyState> {
   // Merge with defaults so older state objects missing newer fields
   // (e.g., todos was added later) don't return undefined for them.
   const merged = { ...defaultGertyState, ...(stored ?? {}) }
+  merged.homeStats = { ...defaultGertyState.homeStats, ...(stored?.homeStats ?? {}) }
   // The four daily tasks are fixed — always the same set in the same
   // order. We only preserve the `done` flag from stored state by ID so
   // toggles persist across reloads.
