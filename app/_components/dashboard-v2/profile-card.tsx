@@ -236,61 +236,103 @@ function MiniStat({
   )
 }
 
-const VITALS_INITIAL = [
-  { label: "HEART RATE", value: 72, unit: "BPM", tone: "red" as const },
-  { label: "BLOOD OX", value: 98, unit: "%", tone: "green" as const },
-  { label: "STEPS TODAY", value: 8421, unit: "", tone: "green" as const },
-  { label: "ACTIVE MIN", value: 127, unit: "MIN", tone: "amber" as const },
+type TodayMetrics = {
+  steps: number
+  calories: number
+  activeMinutes: number
+  activeZoneMinutes: number
+  distanceMeters: number
+  floors: number
+}
+
+type Tone = "red" | "amber" | "green" | "cyan"
+type Tile = { label: string; value: number; unit: string; tone: Tone }
+
+const INITIAL: Tile[] = [
+  { label: "STEPS", value: 0, unit: "", tone: "green" },
+  { label: "CALORIES", value: 0, unit: "KCAL", tone: "amber" },
+  { label: "ACTIVE", value: 0, unit: "MIN", tone: "amber" },
+  { label: "AZM", value: 0, unit: "MIN", tone: "red" },
+  { label: "DISTANCE", value: 0, unit: "M", tone: "cyan" },
+  { label: "FLOORS", value: 0, unit: "", tone: "cyan" },
 ]
 
 function VitalsGrid() {
-  const [vals, setVals] = useState(VITALS_INITIAL)
+  const [vals, setVals] = useState(INITIAL)
+  const [flash, setFlash] = useState<Record<string, number>>({})
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setVals((prev) =>
-        prev.map((v, i) =>
-          i === 0
-            ? { ...v, value: 65 + Math.floor(Math.random() * 20) }
-            : i === 1
-              ? { ...v, value: 96 + Math.floor(Math.random() * 4) }
-              : v,
-        ),
-      )
-    }, 1500)
-    return () => clearInterval(id)
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch("/api/health/today", { cache: "no-store" })
+        if (!res.ok) return
+        const d = (await res.json()) as TodayMetrics
+        if (cancelled) return
+        const next: Record<string, number> = {
+          STEPS: d.steps,
+          CALORIES: d.calories,
+          ACTIVE: d.activeMinutes,
+          AZM: d.activeZoneMinutes,
+          DISTANCE: d.distanceMeters,
+          FLOORS: d.floors,
+        }
+        setVals((prev) =>
+          prev.map((v) => {
+            const n = next[v.label] ?? v.value
+            if (n !== v.value) setFlash((f) => ({ ...f, [v.label]: Date.now() }))
+            return { ...v, value: n }
+          }),
+        )
+      } catch {
+        // keep prior values
+      }
+    }
+    load()
+    const id = setInterval(load, 30 * 1000)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
   }, [])
 
+  const flashActive = (label: string) =>
+    flash[label] && Date.now() - flash[label] < 1200
+
   return (
-    <div className="flex-1 min-h-0 grid grid-cols-2 grid-rows-2 gap-[0.8vh]">
-      {vals.map((v) => (
-        <div
-          key={v.label}
-          className="border border-border p-[0.8vh] flex flex-col justify-center"
-        >
-          <div className="text-muted-foreground text-[1.1vh] tracking-[0.3em]">
-            {v.label}
-          </div>
-          <div className="mt-[0.2vh] flex items-baseline gap-2">
-            <span
-              className={`text-[2.6vh] font-bold tabular-nums leading-none ${
-                v.tone === "red"
-                  ? "text-terminal-red glow-red"
-                  : v.tone === "amber"
-                    ? "text-terminal-amber glow-amber"
-                    : "text-terminal-green glow-green"
-              }`}
-            >
-              {v.value.toLocaleString()}
-            </span>
-            {v.unit && (
-              <span className="text-muted-foreground text-[1.2vh] tracking-wider">
-                {v.unit}
+    <div className="flex-1 min-h-0 grid grid-cols-2 grid-rows-3 gap-[0.8vh]">
+      {vals.map((v) => {
+        const toneClass =
+          v.tone === "red"
+            ? "text-terminal-red glow-red"
+            : v.tone === "amber"
+              ? "text-terminal-amber glow-amber"
+              : v.tone === "cyan"
+                ? "text-terminal-cyan"
+                : "text-terminal-green glow-green"
+        return (
+          <div
+            key={v.label}
+            className="border border-border p-[0.8vh] flex flex-col justify-center"
+          >
+            <div className="text-muted-foreground text-[1.1vh] tracking-[0.3em]">
+              {v.label}
+            </div>
+            <div className="mt-[0.2vh] flex items-baseline gap-2">
+              <span
+                className={`text-[2.4vh] font-bold tabular-nums leading-none transition-all duration-500 ${toneClass} ${flashActive(v.label) ? "scale-110 brightness-150" : ""}`}
+              >
+                {v.value.toLocaleString()}
               </span>
-            )}
+              {v.unit && (
+                <span className="text-muted-foreground text-[1.1vh] tracking-wider">
+                  {v.unit}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

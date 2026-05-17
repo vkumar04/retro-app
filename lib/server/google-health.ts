@@ -117,7 +117,9 @@ export type TodayMetrics = {
   steps: number
   calories: number
   activeMinutes: number
+  activeZoneMinutes: number
   distanceMeters: number
+  floors: number
 }
 
 type CivilDate = { year: number; month: number; day: number }
@@ -126,7 +128,13 @@ type RollupResponse = {
     steps?: { countSum?: string | number }
     totalCalories?: { kcalSum?: number }
     activeMinutes?: { minutesSum?: string | number }
+    activeZoneMinutes?: {
+      sumInFatBurnHeartZone?: string | number
+      sumInCardioHeartZone?: string | number
+      sumInPeakHeartZone?: string | number
+    }
     distance?: { millimetersSum?: string | number }
+    floors?: { countSum?: string | number }
   }>
 }
 
@@ -167,20 +175,30 @@ function num(v: string | number | undefined): number {
 
 export async function fetchTodayMetrics(): Promise<TodayMetrics> {
   const token = await getAccessToken()
-  const [steps, calories, active, distance] = await Promise.all([
+  const [steps, calories, active, azm, distance, floors] = await Promise.all([
     dailyRollUp("steps", token),
     dailyRollUp("total-calories", token),
     dailyRollUp("active-minutes", token),
+    dailyRollUp("active-zone-minutes", token),
     dailyRollUp("distance", token),
+    dailyRollUp("floors", token).catch(() => ({}) as RollupResponse),
   ])
   const stepsCount = num(steps.rollupDataPoints?.[0]?.steps?.countSum)
   const kcal = num(calories.rollupDataPoints?.[0]?.totalCalories?.kcalSum)
   const minutes = num(active.rollupDataPoints?.[0]?.activeMinutes?.minutesSum)
+  const azmRaw = azm.rollupDataPoints?.[0]?.activeZoneMinutes
+  const zoneMin =
+    num(azmRaw?.sumInFatBurnHeartZone) +
+    num(azmRaw?.sumInCardioHeartZone) +
+    num(azmRaw?.sumInPeakHeartZone)
   const mm = num(distance.rollupDataPoints?.[0]?.distance?.millimetersSum)
+  const floorsCount = num(floors.rollupDataPoints?.[0]?.floors?.countSum)
   return {
     steps: Math.round(stepsCount),
     calories: Math.round(kcal),
     activeMinutes: Math.round(minutes),
+    activeZoneMinutes: Math.round(zoneMin),
     distanceMeters: Math.round(mm / 1000),
+    floors: Math.round(floorsCount),
   }
 }
