@@ -175,7 +175,7 @@ export default function MacroDashboard() {
           {data.week.map((d) => (
             <div key={d.label} className={`day${d.active ? " active" : ""}`}>
               <span className="lbl">{d.label}</span>
-              <div className="circle">{String(d.date).padStart(2, "0")}</div>
+              <div className="circle" />
             </div>
           ))}
         </div>
@@ -379,7 +379,7 @@ export default function MacroDashboard() {
         {/* FOOTER */}
         <div className="footer">
           <span>
-            <span className="live">●</span> LIVE FOOD-LOG · <span>{data.date}</span>
+            <span className="live">●</span> LIVE FOOD-LOG
           </span>
           <span>BIOMONITOR v2.4 · NUTRITION MODULE · ENCRYPTED</span>
         </div>
