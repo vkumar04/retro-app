@@ -1,4 +1,4 @@
-import { Redis } from "@upstash/redis"
+import { tryGetRedis, getJSON } from "@/lib/server/redis"
 
 export type AmaranDevice = {
   deviceId: string
@@ -22,16 +22,8 @@ const SNAPSHOT_FRESH_MS = 30_000
 const REPLY_POLL_INTERVAL_MS = 150
 const REPLY_TIMEOUT_MS = 5_000
 
-function getRedis(): Redis | null {
-  try {
-    return Redis.fromEnv()
-  } catch {
-    return null
-  }
-}
-
 export function isAmaranConfigured(): boolean {
-  return getRedis() !== null
+  return tryGetRedis() !== null
 }
 
 export type AmaranStatus = {
@@ -42,9 +34,9 @@ export type AmaranStatus = {
 }
 
 export async function getAmaranStatus(): Promise<AmaranStatus> {
-  const redis = getRedis()
+  const redis = tryGetRedis()
   if (!redis) return { configured: false, online: false, devices: [], lastSeenMs: null }
-  const snap = await redis.get<Snapshot>(SNAPSHOT_KEY)
+  const snap = await getJSON<Snapshot>(SNAPSHOT_KEY)
   if (!snap) return { configured: true, online: false, devices: [], lastSeenMs: null }
   const lastSeenMs = Date.now() - snap.ts
   return {
@@ -56,14 +48,14 @@ export async function getAmaranStatus(): Promise<AmaranStatus> {
 }
 
 async function enqueue(cmd: Command): Promise<unknown> {
-  const redis = getRedis()
+  const redis = tryGetRedis()
   if (!redis) throw new Error("Amaran not configured")
   await redis.rpush(CMD_LIST, JSON.stringify(cmd))
 
   const replyKey = `${REPLY_PREFIX}${cmd.reqId}`
   const deadline = Date.now() + REPLY_TIMEOUT_MS
   while (Date.now() < deadline) {
-    const reply = await redis.get<unknown>(replyKey)
+    const reply = await getJSON<unknown>(replyKey)
     if (reply != null) {
       await redis.del(replyKey)
       return reply

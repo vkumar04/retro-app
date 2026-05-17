@@ -1,4 +1,4 @@
-import { Redis } from "@upstash/redis"
+import { getRedis } from "@/lib/server/redis"
 import { NextResponse, type NextRequest } from "next/server"
 
 export const runtime = "nodejs"
@@ -26,21 +26,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 
-  const redis = Redis.fromEnv()
+  const redis = getRedis()
 
   let deleted = 0
-  let cursor: string | number = "0"
+  let cursor = "0"
   do {
-    const result: [string | number, string[]] = await redis.scan(cursor, {
-      match: "amaran:reply:*",
-      count: 100,
-    })
-    cursor = result[0]
-    const keys = result[1]
+    const [next, keys] = await redis.scan(cursor, "MATCH", "amaran:reply:*", "COUNT", 100)
+    cursor = next
     if (keys.length > 0) {
       deleted += await redis.del(...keys)
     }
-  } while (cursor !== "0" && cursor !== 0)
+  } while (cursor !== "0")
 
   const droppedSnapshot = (await redis.del("amaran:snapshot")) === 1
   const droppedCmds = (await redis.del("amaran:cmds")) === 1

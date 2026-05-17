@@ -1,4 +1,4 @@
-import { Redis } from "@upstash/redis"
+import { getRedis } from "@/lib/server/redis"
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 const TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -8,7 +8,7 @@ const API_BASE = "https://health.googleapis.com/v4"
 const REFRESH_TOKEN_KEY = "google-health:refresh-token"
 
 function redis() {
-  return Redis.fromEnv()
+  return getRedis()
 }
 
 function clientId() {
@@ -75,7 +75,7 @@ export async function saveRefreshToken(token: string) {
 }
 
 export async function loadRefreshToken(): Promise<string | null> {
-  const fromRedis = await redis().get<string>(REFRESH_TOKEN_KEY)
+  const fromRedis = await redis().get(REFRESH_TOKEN_KEY)
   if (fromRedis) return fromRedis
   return process.env.GOOGLE_HEALTH_REFRESH_TOKEN ?? null
 }
