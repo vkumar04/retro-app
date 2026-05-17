@@ -10,11 +10,10 @@ type FieldDef = {
   step?: string
 }
 
+// Removed currentWeightLbs, currentFatMassLbs, bodyFatPct — these will be
+// sourced from Google Health once the health_metrics scope is added.
 const HERO_FIELDS: FieldDef[] = [
   { key: "lbsLost", label: "TOTAL LBS LOST", type: "number" },
-  { key: "currentWeightLbs", label: "CURRENT WEIGHT (LBS)", type: "number" },
-  { key: "currentFatMassLbs", label: "CURRENT FAT MASS (LBS)", type: "number" },
-  { key: "bodyFatPct", label: "BODY FAT %", type: "number", step: "0.1" },
   { key: "bodyFatStartPct", label: "BODY FAT START % (WAS)", type: "number", step: "0.1" },
   { key: "weightDeltaPct", label: "WEIGHT Δ %", type: "number", step: "0.1" },
   { key: "fatMassDeltaPct", label: "FAT MASS Δ %", type: "number", step: "0.1" },
@@ -26,12 +25,12 @@ const COMPOSITION_FIELDS: FieldDef[] = [
   { key: "leanMassLbs", label: "LEAN MASS (LBS)", type: "number" },
 ]
 
+// Removed weightKg — will come from Google Health weight data type.
 const PROFILE_FIELDS: FieldDef[] = [
   { key: "patientName", label: "PATIENT NAME", type: "text" },
   { key: "patientId", label: "PATIENT ID", type: "text" },
   { key: "age", label: "AGE", type: "number" },
   { key: "heightCm", label: "HEIGHT (CM)", type: "number" },
-  { key: "weightKg", label: "WEIGHT (KG)", type: "number", step: "0.1" },
   { key: "startWeightLbs", label: "START WEIGHT (LBS)", type: "number" },
   { key: "targetWeightLbs", label: "TARGET WEIGHT (LBS)", type: "number" },
   { key: "bodyFatGoalPct", label: "BODY FAT GOAL %", type: "number", step: "0.1" },
