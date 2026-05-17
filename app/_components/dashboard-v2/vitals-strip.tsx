@@ -19,6 +19,7 @@ const INITIAL = [
 export function VitalsStrip() {
   const [vals, setVals] = useState(INITIAL)
   const [live, setLive] = useState(false)
+  const [flash, setFlash] = useState<Record<string, number>>({})
 
   useEffect(() => {
     let cancelled = false
@@ -31,9 +32,16 @@ export function VitalsStrip() {
         setLive(true)
         setVals((prev) =>
           prev.map((v) => {
-            if (v.label === "STEPS TODAY") return { ...v, value: data.steps }
-            if (v.label === "ACTIVE MIN") return { ...v, value: data.activeMinutes }
-            return v
+            const next =
+              v.label === "STEPS TODAY"
+                ? data.steps
+                : v.label === "ACTIVE MIN"
+                  ? data.activeMinutes
+                  : v.value
+            if (next !== v.value && (v.label === "STEPS TODAY" || v.label === "ACTIVE MIN")) {
+              setFlash((f) => ({ ...f, [v.label]: Date.now() }))
+            }
+            return { ...v, value: next }
           }),
         )
       } catch {
@@ -41,7 +49,7 @@ export function VitalsStrip() {
       }
     }
     loadHealth()
-    const healthId = setInterval(loadHealth, 5 * 60 * 1000)
+    const healthId = setInterval(loadHealth, 30 * 1000)
 
     const jitterId = setInterval(() => {
       setVals((prev) =>
@@ -61,6 +69,9 @@ export function VitalsStrip() {
       clearInterval(healthId)
     }
   }, [])
+
+  const flashActive = (label: string) =>
+    flash[label] && Date.now() - flash[label] < 1200
 
   return (
     <div className="h-full border border-border bg-card font-mono p-[1.4vh] flex flex-col">
@@ -87,13 +98,13 @@ export function VitalsStrip() {
             </div>
             <div className="mt-[0.3vh] flex items-baseline gap-2">
               <span
-                className={`text-[3vh] font-bold tabular-nums leading-none ${
+                className={`text-[3vh] font-bold tabular-nums leading-none transition-all duration-500 ${
                   v.tone === "red"
                     ? "text-terminal-red glow-red"
                     : v.tone === "amber"
                       ? "text-terminal-amber glow-amber"
                       : "text-terminal-green glow-green"
-                }`}
+                } ${flashActive(v.label) ? "scale-110 brightness-150" : ""}`}
               >
                 {v.value.toLocaleString()}
               </span>
