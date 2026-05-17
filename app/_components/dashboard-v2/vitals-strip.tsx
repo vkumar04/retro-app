@@ -2,18 +2,48 @@
 
 import { useEffect, useState } from "react"
 
+type TodayMetrics = {
+  steps: number
+  calories: number
+  activeMinutes: number
+  exerciseCount: number
+}
+
 const INITIAL = [
   { label: "HEART RATE", value: 72, unit: "BPM", tone: "red" as const },
   { label: "BLOOD OX", value: 98, unit: "%", tone: "green" as const },
-  { label: "STEPS TODAY", value: 8421, unit: "", tone: "green" as const },
-  { label: "ACTIVE MIN", value: 127, unit: "MIN", tone: "amber" as const },
+  { label: "STEPS TODAY", value: 0, unit: "", tone: "green" as const },
+  { label: "ACTIVE MIN", value: 0, unit: "MIN", tone: "amber" as const },
 ]
 
 export function VitalsStrip() {
   const [vals, setVals] = useState(INITIAL)
+  const [live, setLive] = useState(false)
 
   useEffect(() => {
-    const id = setInterval(() => {
+    let cancelled = false
+    const loadHealth = async () => {
+      try {
+        const res = await fetch("/api/health/today", { cache: "no-store" })
+        if (!res.ok) throw new Error(String(res.status))
+        const data = (await res.json()) as TodayMetrics
+        if (cancelled) return
+        setLive(true)
+        setVals((prev) =>
+          prev.map((v) => {
+            if (v.label === "STEPS TODAY") return { ...v, value: data.steps }
+            if (v.label === "ACTIVE MIN") return { ...v, value: data.activeMinutes }
+            return v
+          }),
+        )
+      } catch {
+        // leaves zeros / fallback in place
+      }
+    }
+    loadHealth()
+    const healthId = setInterval(loadHealth, 5 * 60 * 1000)
+
+    const jitterId = setInterval(() => {
       setVals((prev) =>
         prev.map((v, i) =>
           i === 0
@@ -24,7 +54,12 @@ export function VitalsStrip() {
         ),
       )
     }, 1500)
-    return () => clearInterval(id)
+
+    return () => {
+      cancelled = true
+      clearInterval(jitterId)
+      clearInterval(healthId)
+    }
   }, [])
 
   return (
@@ -34,8 +69,10 @@ export function VitalsStrip() {
           LIVE VITALS
         </h4>
         <span className="text-muted-foreground text-[1.2vh] tracking-[0.3em] flex items-center gap-1.5">
-          <span className="size-1.5 rounded-full bg-terminal-green pulse-glow" />
-          STREAMING
+          <span
+            className={`size-1.5 rounded-full pulse-glow ${live ? "bg-terminal-green" : "bg-terminal-amber"}`}
+          />
+          {live ? "STREAMING" : "OFFLINE"}
         </span>
       </div>
 

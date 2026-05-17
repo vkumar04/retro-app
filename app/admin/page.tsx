@@ -93,6 +93,9 @@ export default function AdminPage() {
             <TabsTrigger value="stats" className="tracking-wider text-xs">
               HOME STATS
             </TabsTrigger>
+            <TabsTrigger value="auth" className="tracking-wider text-xs">
+              AUTH
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="controls">
@@ -101,6 +104,12 @@ export default function AdminPage() {
 
           <TabsContent value="stats">
             <StatsPanel />
+          </TabsContent>
+
+          <TabsContent value="auth">
+            <div className="grid gap-4 md:grid-cols-2">
+              <FitbitPanel />
+            </div>
           </TabsContent>
         </Tabs>
 
@@ -329,6 +338,76 @@ function ControlsPanel({
         </Panel>
       </div>
     </div>
+  )
+}
+
+type HealthStatus =
+  | { state: "loading" }
+  | { state: "connected" }
+  | { state: "disconnected"; reason: string }
+  | { state: "error"; reason: string; detail?: string }
+
+function FitbitPanel() {
+  const [status, setStatus] = useState<HealthStatus>({ state: "loading" })
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch("/api/health/status", { cache: "no-store" })
+        const json = (await res.json()) as HealthStatus
+        if (!cancelled) setStatus(json)
+      } catch (err) {
+        if (!cancelled)
+          setStatus({ state: "error", reason: "fetch_failed", detail: String(err) })
+      }
+    }
+    load()
+    const id = setInterval(load, 15_000)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+  }, [])
+
+  const right =
+    status.state === "loading"
+      ? "..."
+      : status.state === "connected"
+        ? "CONNECTED"
+        : status.state === "disconnected"
+          ? "NOT LINKED"
+          : status.reason.replace(/_/g, " ").toUpperCase()
+
+  return (
+    <Panel title="FITBIT / GOOGLE HEALTH" right={right}>
+      <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+        Connects Adam&apos;s Fitbit data to the dashboard. Step 1: sign up at Fitbit
+        with the Google account that owns the device. Step 2: authorize this app
+        to read the data via Google Health.
+      </p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <a
+          href="https://fitbit.google.com/auth/signup"
+          target="_blank"
+          rel="noreferrer"
+          className="px-3 py-2 text-xs tracking-wider border border-terminal-amber text-terminal-amber bg-terminal-amber/10 hover:bg-terminal-amber/20 text-center"
+        >
+          1. SIGN UP AT FITBIT ↗
+        </a>
+        <a
+          href="/api/health/login"
+          className="px-3 py-2 text-xs tracking-wider border border-terminal-green text-terminal-green bg-terminal-green/10 hover:bg-terminal-green/20 text-center"
+        >
+          2. CONNECT GOOGLE HEALTH →
+        </a>
+      </div>
+      {status.state === "error" && status.detail && (
+        <p className="mt-3 text-xs text-destructive/80 break-words">
+          {status.detail}
+        </p>
+      )}
+    </Panel>
   )
 }
 
