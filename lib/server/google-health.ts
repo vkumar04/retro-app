@@ -117,49 +117,70 @@ export type TodayMetrics = {
   steps: number
   calories: number
   activeMinutes: number
-  exerciseCount: number
+  distanceMeters: number
 }
 
-type ExerciseDataPoint = {
-  exercise?: {
-    interval?: { civilStartTime?: string; civilEndTime?: string }
-    duration?: string
-    steps?: number
-    calories?: number
-    activeDurationMinutes?: number
+type CivilDate = { year: number; month: number; day: number }
+type RollupResponse = {
+  rollupDataPoints?: Array<{
+    steps?: { countSum?: string | number }
+    totalCalories?: { kcalSum?: number }
+    activeMinutes?: { minutesSum?: string | number }
+    distance?: { millimetersSum?: string | number }
+  }>
+}
+
+function todayRange(): { start: CivilDate; end: CivilDate } {
+  const t = new Date()
+  const tomorrow = new Date(t)
+  tomorrow.setDate(t.getDate() + 1)
+  return {
+    start: { year: t.getFullYear(), month: t.getMonth() + 1, day: t.getDate() },
+    end: {
+      year: tomorrow.getFullYear(),
+      month: tomorrow.getMonth() + 1,
+      day: tomorrow.getDate(),
+    },
   }
-  startTime?: string
-  endTime?: string
-  steps?: number
-  calories?: number
+}
+
+async function dailyRollUp(dataType: string, token: string): Promise<RollupResponse> {
+  const { start, end } = todayRange()
+  const url = `${API_BASE}/users/me/dataTypes/${dataType}/dataPoints:dailyRollUp`
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ range: { start: { date: start }, end: { date: end } } }),
+    cache: "no-store",
+  })
+  if (!res.ok) throw new Error(`health api ${dataType} ${res.status}: ${await res.text()}`)
+  return (await res.json()) as RollupResponse
+}
+
+function num(v: string | number | undefined): number {
+  if (v == null) return 0
+  return typeof v === "string" ? Number(v) : v
 }
 
 export async function fetchTodayMetrics(): Promise<TodayMetrics> {
   const token = await getAccessToken()
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
-  const filter = `exercise.interval.civil_start_time >= "${start.toISOString().slice(0, 19)}"`
-  const url = `${API_BASE}/users/me/dataTypes/exercise/dataPoints?filter=${encodeURIComponent(filter)}`
-
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-    cache: "no-store",
-  })
-  if (!res.ok) throw new Error(`health api ${res.status}: ${await res.text()}`)
-  const json = (await res.json()) as { dataPoints?: ExerciseDataPoint[] }
-
-  let steps = 0
-  let calories = 0
-  let activeMinutes = 0
-  for (const dp of json.dataPoints ?? []) {
-    steps += dp.exercise?.steps ?? dp.steps ?? 0
-    calories += dp.exercise?.calories ?? dp.calories ?? 0
-    activeMinutes += dp.exercise?.activeDurationMinutes ?? 0
-  }
+  const [steps, calories, active, distance] = await Promise.all([
+    dailyRollUp("steps", token),
+    dailyRollUp("total-calories", token),
+    dailyRollUp("active-minutes", token),
+    dailyRollUp("distance", token),
+  ])
+  const stepsCount = num(steps.rollupDataPoints?.[0]?.steps?.countSum)
+  const kcal = num(calories.rollupDataPoints?.[0]?.totalCalories?.kcalSum)
+  const minutes = num(active.rollupDataPoints?.[0]?.activeMinutes?.minutesSum)
+  const mm = num(distance.rollupDataPoints?.[0]?.distance?.millimetersSum)
   return {
-    steps,
-    calories: Math.round(calories),
-    activeMinutes: Math.round(activeMinutes),
-    exerciseCount: json.dataPoints?.length ?? 0,
+    steps: Math.round(stepsCount),
+    calories: Math.round(kcal),
+    activeMinutes: Math.round(minutes),
+    distanceMeters: Math.round(mm / 1000),
   }
 }

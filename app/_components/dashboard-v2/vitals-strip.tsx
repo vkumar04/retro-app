@@ -6,7 +6,7 @@ type TodayMetrics = {
   steps: number
   calories: number
   activeMinutes: number
-  exerciseCount: number
+  distanceMeters: number
 }
 
 const INITIAL = [
