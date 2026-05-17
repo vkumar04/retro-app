@@ -119,6 +119,7 @@ function FlameIcon({ size = 12, color = "currentColor" }: { size?: number; color
 
 export default function MacroDashboard() {
   const [data, setData] = useState<MacroData>(FALLBACK)
+  const [burned, setBurned] = useState<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -138,11 +139,24 @@ export default function MacroDashboard() {
         if (!cancelled) setData({ ...FALLBACK, __offline: true })
       }
     }
+    const loadBurned = async () => {
+      try {
+        const res = await fetch("/api/health/today", { cache: "no-store" })
+        if (!res.ok) return
+        const json = (await res.json()) as { calories?: number }
+        if (!cancelled && typeof json.calories === "number") setBurned(json.calories)
+      } catch {
+        // burn data is non-essential; macro panel still works without it
+      }
+    }
     load()
+    loadBurned()
     const id = setInterval(load, 30000)
+    const burnId = setInterval(loadBurned, 30000)
     return () => {
       cancelled = true
       clearInterval(id)
+      clearInterval(burnId)
     }
   }, [])
 
@@ -193,6 +207,9 @@ export default function MacroDashboard() {
             </div>
             <div className="meta">
               {fmt(data.consumed.kcal)} / {fmt(data.goals.kcal)} CONSUMED · {pct}% OF GOAL
+              {burned != null && (
+                <> · {fmt(burned)} BURNED</>
+              )}
             </div>
           </div>
           <Ring

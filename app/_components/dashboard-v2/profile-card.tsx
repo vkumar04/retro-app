@@ -250,7 +250,7 @@ type Tile = { label: string; value: number; unit: string; tone: Tone }
 
 const INITIAL: Tile[] = [
   { label: "STEPS", value: 0, unit: "", tone: "green" },
-  { label: "CALORIES", value: 0, unit: "KCAL", tone: "amber" },
+  { label: "BURNED", value: 0, unit: "KCAL", tone: "amber" },
   { label: "ACTIVE", value: 0, unit: "MIN", tone: "amber" },
   { label: "AZM", value: 0, unit: "MIN", tone: "red" },
   { label: "DISTANCE", value: 0, unit: "M", tone: "cyan" },
@@ -271,7 +271,7 @@ function VitalsGrid() {
         if (cancelled) return
         const next: Record<string, number> = {
           STEPS: d.steps,
-          CALORIES: d.calories,
+          BURNED: d.calories,
           ACTIVE: d.activeMinutes,
           AZM: d.activeZoneMinutes,
           DISTANCE: d.distanceMeters,
