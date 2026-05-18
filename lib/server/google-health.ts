@@ -138,17 +138,29 @@ type RollupResponse = {
   }>
 }
 
+// Google Health expects civil dates (no timezone). The Railway server runs in
+// UTC, but Adam's Fitbit records data in his local civil time, so use a fixed
+// reporting zone to avoid the UTC clock rolling our "today" forward before
+// Adam's actual day is over.
+const REPORTING_TZ = process.env.HEALTH_REPORTING_TZ ?? "America/New_York"
+
+function civilDateInZone(d: Date, tz: string): CivilDate {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d)
+  const get = (t: string) => Number(parts.find((p) => p.type === t)!.value)
+  return { year: get("year"), month: get("month"), day: get("day") }
+}
+
 function todayRange(): { start: CivilDate; end: CivilDate } {
-  const t = new Date()
-  const tomorrow = new Date(t)
-  tomorrow.setDate(t.getDate() + 1)
+  const now = new Date()
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
   return {
-    start: { year: t.getFullYear(), month: t.getMonth() + 1, day: t.getDate() },
-    end: {
-      year: tomorrow.getFullYear(),
-      month: tomorrow.getMonth() + 1,
-      day: tomorrow.getDate(),
-    },
+    start: civilDateInZone(now, REPORTING_TZ),
+    end: civilDateInZone(tomorrow, REPORTING_TZ),
   }
 }
 
