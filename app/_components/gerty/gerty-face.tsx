@@ -45,7 +45,7 @@ function Emoticon({ mood, isSpeaking }: { mood: Mood; isSpeaking: boolean }) {
           <OvalEyes />
           {speakingMouth ?? (
             <path
-              d="M 56 122 Q 100 172 144 122"
+              d="M 60 122 Q 100 164 140 122"
               fill="none"
               stroke={stroke}
               strokeWidth={strokeW}
